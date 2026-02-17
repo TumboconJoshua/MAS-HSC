@@ -18,7 +18,7 @@ export async function createServer(formData: FormData) {
 
     if (error) {
         console.error('Error creating server:', error)
-        return { error: 'Failed to create server' }
+        redirect('/servers/new?error=true')
     }
 
     revalidatePath('/servers')
@@ -40,7 +40,7 @@ export async function updateServer(id: string, formData: FormData) {
 
     if (error) {
         console.error('Error updating server:', error)
-        return { error: 'Failed to update server' }
+        redirect(`/servers/${id}?error=true`)
     }
 
     revalidatePath(`/servers/${id}`)
