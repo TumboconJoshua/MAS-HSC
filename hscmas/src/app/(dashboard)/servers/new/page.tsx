@@ -6,7 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { User, Phone, Users, ChevronLeft } from 'lucide-react'
 import Link from 'next/link'
 
-export default async function NewServerPage() {
+import { AlertCircle } from 'lucide-react'
+
+export default async function NewServerPage(props: {
+    searchParams: Promise<{ error?: string }>
+}) {
+    const searchParams = await props.searchParams;
     return (
         <div className="max-w-3xl mx-auto space-y-8">
             <Link href="/servers">
@@ -27,6 +32,12 @@ export default async function NewServerPage() {
                     <CardDescription>Enter the basic details of the server.</CardDescription>
                 </CardHeader>
                 <CardContent className="pt-8">
+                    {searchParams.error && (
+                        <div className="mb-6 flex items-center gap-3 p-4 text-sm text-red-600 bg-red-50 dark:bg-red-950/20 rounded-2xl border border-red-100 dark:border-red-900/30 animate-in fade-in zoom-in duration-300">
+                            <AlertCircle className="w-4 h-4 shrink-0" />
+                            <p>Failed to create server profile. Please try again.</p>
+                        </div>
+                    )}
                     <form action={createServer} className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
