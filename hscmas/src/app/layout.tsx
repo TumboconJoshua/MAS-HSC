@@ -20,7 +20,7 @@ const outfit = Outfit({
 
 export const metadata: Metadata = {
     title: "MAS-HSC | Altar Servers Management",
-    description: "Ministry of Altar Servers - Holy Spirit Church Management System",
+    description: "Ministry of Altar Servers - Holy Spirit Chapel Management System",
 };
 
 export default function RootLayout({

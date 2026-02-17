@@ -121,7 +121,7 @@ export default function DashboardPage() {
                                 <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
                             </div>
                             <p className="text-xs text-muted-foreground leading-relaxed">
-                                Database synchronized with Holy Spirit Church servers. Last sync: just now.
+                                Database synchronized with Holy Spirit Chapel servers. Last sync: just now.
                             </p>
                         </CardContent>
                     </Card>

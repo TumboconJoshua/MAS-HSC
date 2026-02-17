@@ -53,7 +53,7 @@ export default function DashboardLayout({
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         <span>Management System</span>
                         <span className="text-border">/</span>
-                        <span className="text-foreground font-medium">Holy Spirit Church</span>
+                        <span className="text-foreground font-medium">Holy Spirit Chapel</span>
                     </div>
                     <div className="flex items-center gap-4">
                         <ThemeToggle />

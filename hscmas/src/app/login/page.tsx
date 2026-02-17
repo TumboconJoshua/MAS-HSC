@@ -20,8 +20,8 @@ export default async function LoginPage(props: {
                     <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-accent/10 border border-accent/20 mb-6 shadow-xl shadow-accent/5">
                         <Church className="w-8 h-8 text-accent" />
                     </div>
-                    <h1 className="text-3xl font-bold tracking-tight text-foreground">MAS-HSC</h1>
-                    <p className="text-muted-foreground mt-2">Ministry of Altar Servers Management</p>
+                    <h1 className="text-3xl font-bold tracking-tight text-foreground">MAS-HSC Management System</h1>
+                    <p className="text-muted-foreground mt-2">Ministry of Altar Servers Holy Spirit Chapel</p>
                 </div>
 
                 <div className="bg-card/50 backdrop-blur-xl p-8 rounded-[2rem] border border-border shadow-2xl space-y-6">
@@ -64,13 +64,13 @@ export default async function LoginPage(props: {
                             >
                                 Sign In
                             </Button>
-                            <Button
+                            {/* <Button
                                 formAction={signup}
                                 variant="outline"
                                 className="w-full h-12 rounded-xl text-base font-bold border-accent/20 text-accent hover:bg-accent/5"
                             >
                                 Create Account
-                            </Button>
+                            </Button> */}
                         </div>
                     </form>
 
@@ -95,7 +95,8 @@ export default async function LoginPage(props: {
 
                     <div className="pt-4 text-center">
                         <p className="text-xs text-muted-foreground">
-                            Protected by Holy Spirit Church IT Ministry
+                            Copyright © 2026. All Rights Reserved. <br />
+                            HSC-MAS
                         </p>
                     </div>
                 </div>
