@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { CheckCircle2, XCircle, Clock, AlertCircle, Loader2 } from 'lucide-react'
+import { CheckCircle2, XCircle, Clock, AlertCircle, Loader2, ShieldCheck } from 'lucide-react'
 import { recordAttendance } from '../../actions'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -21,7 +21,7 @@ interface AttendanceFormProps {
     existingAttendance: { server_id: string; status: string }[]
 }
 
-type AttendanceStatus = 'present' | 'absent' | 'late' | 'excused'
+type AttendanceStatus = 'service' | 'present' | 'absent' | 'late' | 'excused'
 
 export function AttendanceForm({ massId, servers, existingAttendance }: AttendanceFormProps) {
     const router = useRouter()
@@ -77,6 +77,14 @@ export function AttendanceForm({ massId, servers, existingAttendance }: Attendan
                 <Button 
                     variant="outline" 
                     size="sm" 
+                    onClick={() => markAll('service')}
+                    className="rounded-xl border-accent/20 text-accent hover:bg-accent hover:text-white"
+                >
+                    Mark All Service
+                </Button>
+                <Button 
+                    variant="outline" 
+                    size="sm" 
                     onClick={() => markAll('present')}
                     className="rounded-xl border-green-500/20 text-green-600 hover:bg-green-500 hover:text-white"
                 >
@@ -108,6 +116,13 @@ export function AttendanceForm({ massId, servers, existingAttendance }: Attendan
                                 </div>
                                 
                                 <div className="flex items-center gap-1 bg-background/50 p-1 rounded-xl border border-border/50 self-start sm:self-center">
+                                    <StatusButton 
+                                        active={attendance[server.id] === 'service'} 
+                                        onClick={() => toggleStatus(server.id, 'service')}
+                                        color="purple"
+                                        icon={ShieldCheck}
+                                        label="Service"
+                                    />
                                     <StatusButton 
                                         active={attendance[server.id] === 'present'} 
                                         onClick={() => toggleStatus(server.id, 'present')}
@@ -169,6 +184,7 @@ export function AttendanceForm({ massId, servers, existingAttendance }: Attendan
 
 function StatusButton({ active, onClick, color, icon: Icon, label }: any) {
     const colors: any = {
+        purple: active ? 'bg-indigo-500 text-white border-indigo-500' : 'text-indigo-600 hover:bg-indigo-50',
         green: active ? 'bg-green-500 text-white border-green-500' : 'text-green-600 hover:bg-green-50',
         red: active ? 'bg-red-500 text-white border-red-500' : 'text-red-600 hover:bg-red-50',
         yellow: active ? 'bg-yellow-500 text-white border-yellow-500' : 'text-yellow-600 hover:bg-yellow-50',

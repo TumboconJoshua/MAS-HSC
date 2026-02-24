@@ -10,9 +10,11 @@ import {
     Search,
     Users,
     CalendarDays,
-    MapPin
+    MapPin,
+    Trash2
 } from 'lucide-react'
 import Link from 'next/link'
+import { deleteMass } from './actions'
 
 interface Mass {
     id: string
@@ -140,6 +142,11 @@ export default async function AttendancePage() {
                                                 {mass.attendance?.[0]?.count > 0 ? 'Edit' : 'Mark'}
                                             </Button>
                                         </Link>
+                                        <form action={deleteMass.bind(null, mass.id)} className="hidden md:block">
+                                            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-red-500 rounded-xl">
+                                                <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                        </form>
                                     </div>
                                 </div>
                             ))

@@ -32,7 +32,7 @@ create table attendance (
   id uuid default gen_random_uuid() primary key,
   mass_id uuid references masses(id) on delete cascade not null,
   server_id uuid references servers(id) on delete cascade not null,
-  status text default 'present' check (status in ('present', 'absent', 'excused', 'late')),
+  status text default 'present' check (status in ('service', 'present', 'absent', 'excused', 'late')),
   remarks text,
   created_at timestamptz default now()
 );

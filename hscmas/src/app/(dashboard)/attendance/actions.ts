@@ -51,3 +51,20 @@ export async function recordAttendance(massId: string, attendanceData: { server_
     return { success: true }
 }
 
+export async function deleteMass(id: string) {
+    const supabase = await createClient()
+    
+    // Attendance records should be deleted automatically via CASCADE if FK is set, 
+    // but good to keep in mind if they are not.
+    const { error } = await supabase.from('masses').delete().eq('id', id)
+
+    if (error) {
+        console.error('Error deleting mass:', error)
+        // We can redirect with an error message in the URL
+        redirect(`/attendance?error=delete_failed`)
+    }
+
+    revalidatePath('/attendance')
+    redirect('/attendance')
+}
+

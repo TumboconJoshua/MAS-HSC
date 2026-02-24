@@ -50,20 +50,21 @@ export default async function ServerDetailPage(props: { params: Promise<{ id: st
 
     // Calculate Stats
     const totalMasses = attendanceHistory?.length || 0
+    const serviceCount = attendanceHistory?.filter((a: any) => a.status === 'service').length || 0
     const presentCount = attendanceHistory?.filter((a: any) => a.status === 'present').length || 0
     const lateCount = attendanceHistory?.filter((a: any) => a.status === 'late').length || 0
     const excusedCount = attendanceHistory?.filter((a: any) => a.status === 'excused').length || 0
     
-    // Attendance Rate Logic: (Presents + (Lates * 0.7)) / Total
+    // Attendance Rate Logic: (Services + Presents + (Lates * 0.7)) / Total
     const attendanceRate = totalMasses > 0 
-        ? Math.round(((presentCount + (lateCount * 0.7) + (excusedCount * 1.0)) / totalMasses) * 100) 
+        ? Math.round(((serviceCount + presentCount + (lateCount * 0.7) + (excusedCount * 1.0)) / totalMasses) * 100) 
         : 0
 
     // Streak Logic: Find consecutive 'present' statuses from the beginning of the list
     let currentStreak = 0
     if (attendanceHistory) {
         for (const record of attendanceHistory) {
-            if (record.status === 'present') {
+            if (record.status === 'service' || record.status === 'present') {
                 currentStreak++
             } else if (record.status !== 'excused') { // Excused doesn't break steak? 
                 break
@@ -71,8 +72,8 @@ export default async function ServerDetailPage(props: { params: Promise<{ id: st
         }
     }
 
-    // Points System: 10 pts per Present, 7 pts per Late, 0 for others
-    const totalPoints = (presentCount * 10) + (lateCount * 7) + (excusedCount * 5)
+    // Points System: 10 pts per Service, 5 pts per Present, 7 pts per Late, 5 per excused (standardized)
+    const totalPoints = (serviceCount * 10) + (presentCount * 5) + (lateCount * 7) + (excusedCount * 5)
 
     const rateColor = attendanceRate >= 90 ? 'text-green-500' : attendanceRate >= 75 ? 'text-accent' : 'text-yellow-500'
 
@@ -144,9 +145,16 @@ export default async function ServerDetailPage(props: { params: Promise<{ id: st
                     color="text-accent"
                 />
                 <StatCard 
-                    label="Present" 
-                    value={presentCount} 
-                    sub={`${totalMasses} total services`} 
+                    label="Services" 
+                    value={serviceCount} 
+                    sub={`${presentCount} just present`} 
+                    icon={ShieldCheck} 
+                    color="text-indigo-500"
+                />
+                <StatCard 
+                    label="Total Presences" 
+                    value={serviceCount + presentCount} 
+                    sub={`${totalMasses} total masses`} 
                     icon={CheckCircle2} 
                     color="text-green-500"
                 />
@@ -273,6 +281,7 @@ function DetailItem({ label, value, icon: Icon }: any) {
 
 function StatusBadge({ status }: { status: string }) {
     const configs: any = {
+        service: { icon: ShieldCheck, class: "bg-indigo-500/10 text-indigo-500 border-indigo-500/20", label: "Service" },
         present: { icon: CheckCircle2, class: "bg-green-500/10 text-green-500 border-green-500/20", label: "Present" },
         absent: { icon: XCircle, class: "bg-red-500/10 text-red-500 border-red-500/20", label: "Absent" },
         late: { icon: Clock, class: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20", label: "Late" },
