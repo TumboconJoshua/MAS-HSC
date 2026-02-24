@@ -33,17 +33,17 @@ export default async function EquipmentPage() {
 
     return (
         <div className="space-y-8 pb-12">
-            <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-primary">Equipment & Vestments</h1>
-                    <p className="text-muted-foreground mt-1">Manage the ministry's inventory, from albs and cinctures to liturgical objects.</p>
+                    <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-primary">Equipment & Vestments</h1>
+                    <p className="text-muted-foreground mt-1 text-sm md:text-base">Manage the ministry's inventory, from albs and liturgical objects.</p>
                 </div>
-                <div className="flex items-center gap-3">
-                    <Button variant="outline" className="shadow-sm">
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                    <Button variant="outline" className="flex-1 sm:flex-none shadow-sm h-10">
                         <History className="w-4 h-4 mr-2" />
-                        Audit Log
+                        Audit
                     </Button>
-                    <Button variant="accent" className="shadow-lg shadow-accent/20 px-6">
+                    <Button variant="accent" className="flex-1 sm:flex-none shadow-lg shadow-accent/20 px-6 h-10">
                         <Plus className="w-4 h-4 mr-2" />
                         Add Item
                     </Button>
@@ -83,7 +83,7 @@ export default async function EquipmentPage() {
             </div>
 
             {/* Inventory Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {equipment && equipment.length > 0 ? (
                     equipment.map((item) => (
                         <Card key={item.id} className="group border-none shadow-md hover:shadow-xl transition-all duration-300 bg-card/60 backdrop-blur-sm overflow-hidden">

@@ -9,7 +9,8 @@ import {
     Plus,
     Search,
     Users,
-    CalendarDays
+    CalendarDays,
+    MapPin
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -27,20 +28,25 @@ export default async function AttendancePage() {
 
     const { data: masses } = await supabase
         .from('masses')
-        .select('*')
-        .order('date', { ascending: false }) as { data: Mass[] | null }
+        .select(`
+            *,
+            attendance:attendance(count)
+        `)
+        .order('date', { ascending: false }) as any
 
     return (
         <div className="space-y-8 pb-12">
-            <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-primary">Attendance</h1>
-                    <p className="text-muted-foreground mt-1">Track and manage altar server participation in liturgical services.</p>
+                    <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-primary">Attendance</h1>
+                    <p className="text-muted-foreground mt-1 text-sm md:text-base">Track and manage altar server participation in liturgical services.</p>
                 </div>
-                <Button variant="accent" className="shadow-lg shadow-accent/20 px-6">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Schedule Mass
-                </Button>
+                <Link href="/attendance/new" className="w-full sm:w-auto">
+                    <Button variant="accent" className="shadow-lg shadow-accent/20 px-6 w-full">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Schedule Mass
+                    </Button>
+                </Link>
             </header>
 
             {/* Attendance Stats */}
@@ -85,43 +91,60 @@ export default async function AttendancePage() {
                 <CardContent className="p-0">
                     <div className="divide-y divide-border/50">
                         {masses && masses.length > 0 ? (
-                            masses.map((mass) => (
-                                <div key={mass.id} className="p-6 flex flex-col md:flex-row md:items-center justify-between hover:bg-accent/5 transition-colors group">
-                                    <div className="flex items-center gap-6">
-                                        <div className="w-14 h-14 rounded-2xl bg-secondary flex flex-col items-center justify-center border border-border group-hover:border-accent/40 shadow-inner">
+                            masses.map((mass: any) => (
+                                <div key={mass.id} className="p-4 md:p-6 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-accent/5 transition-colors group gap-4">
+                                    <div className="flex items-center gap-4 md:gap-6">
+                                        <div className="w-12 h-12 md:w-14 md:h-14 shrink-0 rounded-2xl bg-secondary flex flex-col items-center justify-center border border-border group-hover:border-accent/40 shadow-inner">
                                             <span className="text-[10px] uppercase font-bold text-muted-foreground leading-none mb-1">
                                                 {new Date(mass.date).toLocaleString('default', { month: 'short' })}
                                             </span>
-                                            <span className="text-xl font-black text-accent leading-none">
+                                            <span className="text-lg md:text-xl font-black text-accent leading-none">
                                                 {new Date(mass.date).getDate()}
                                             </span>
                                         </div>
                                         <div>
-                                            <h3 className="font-bold text-lg group-hover:text-accent transition-colors">{mass.title}</h3>
-                                            <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
-                                                <span className="flex items-center gap-1">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <h3 className="font-bold text-base md:text-lg group-hover:text-accent transition-colors">{mass.title}</h3>
+                                                {mass.attendance?.[0]?.count > 0 ? (
+                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-500/10 text-green-500 text-[10px] font-bold border border-green-500/20">
+                                                        <CheckCircle2 className="w-3 h-3" />
+                                                        Marked ({mass.attendance[0].count})
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-500 text-[10px] font-bold border border-yellow-500/20">
+                                                        <Clock className="w-3 h-3" />
+                                                        Pending
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="flex flex-wrap items-center gap-y-1 gap-x-4 text-xs md:text-sm text-muted-foreground">
+                                                <div className="flex items-center gap-1.5">
                                                     <Clock className="w-3.5 h-3.5 text-accent" />
                                                     {mass.start_time}
-                                                </span>
-                                                <span className="flex items-center gap-1">
-                                                    <Users className="w-3.5 h-3.5 text-accent" />
-                                                    {mass.type}
-                                                </span>
+                                                </div>
+                                                <div className="flex items-center gap-1.5">
+                                                    <MapPin className="w-3.5 h-3.5 text-accent" />
+                                                    {mass.location || 'Holy Spirit Chapel'}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="mt-4 md:mt-0 flex items-center gap-3">
-                                        <Button variant="outline" size="sm" className="rounded-xl border-accent/20 hover:bg-accent/10 hover:text-accent">
-                                            View Details
-                                        </Button>
-                                        <Button variant="accent" size="sm" className="rounded-xl shadow-md">
-                                            Mark Attendance
-                                        </Button>
+                                    <div className="flex items-center gap-2 md:gap-3 w-full sm:w-auto">
+                                        <Link href={`/attendance/${mass.id}`} className="flex-1 sm:flex-none">
+                                            <Button variant="outline" size="sm" className="w-full rounded-xl border-accent/20 hover:bg-accent/10 hover:text-accent">
+                                                Details
+                                            </Button>
+                                        </Link>
+                                        <Link href={`/attendance/${mass.id}/mark`} className="flex-1 sm:flex-none">
+                                            <Button variant="accent" size="sm" className="w-full rounded-xl shadow-md">
+                                                {mass.attendance?.[0]?.count > 0 ? 'Edit' : 'Mark'}
+                                            </Button>
+                                        </Link>
                                     </div>
                                 </div>
                             ))
                         ) : (
-                            <div className="p-20 text-center space-y-4">
+                            <div className="p-10 md:p-20 text-center space-y-4">
                                 <div className="w-20 h-20 bg-secondary rounded-full flex items-center justify-center mx-auto mb-4">
                                     <CalendarDays className="w-10 h-10 text-muted-foreground" />
                                 </div>

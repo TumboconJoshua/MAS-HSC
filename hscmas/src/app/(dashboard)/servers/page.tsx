@@ -10,7 +10,8 @@ import {
     Phone,
     Calendar,
     User,
-    ExternalLink
+    ExternalLink,
+    Camera
 } from 'lucide-react'
 
 interface Server {
@@ -21,6 +22,7 @@ interface Server {
     status: string
     date_joined: string
     group_name: string | null
+    avatar_url: string | null
 }
 
 export default async function ServersPage() {
@@ -74,8 +76,12 @@ export default async function ServersPage() {
                             <div className="absolute top-0 left-0 w-1 h-full bg-accent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                             <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
                                 <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-2xl bg-secondary flex items-center justify-center text-accent text-xl font-bold border border-border shadow-inner">
-                                        {server.first_name[0]}{server.last_name[0]}
+                                    <div className="w-12 h-12 rounded-2xl bg-secondary flex items-center justify-center text-accent text-xl font-bold border border-border shadow-inner overflow-hidden">
+                                        {server.avatar_url ? (
+                                            <img src={server.avatar_url} alt="" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <>{server.first_name[0]}{server.last_name[0]}</>
+                                        )}
                                     </div>
                                     <div>
                                         <h3 className="font-bold text-lg leading-tight group-hover:text-accent transition-colors">

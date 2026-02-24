@@ -15,13 +15,21 @@ import Link from 'next/link'
 export default function DashboardPage() {
     return (
         <div className="space-y-10">
-            <header>
-                <h1 className="text-3xl font-bold tracking-tight text-primary">Overview</h1>
-                <p className="text-muted-foreground mt-2">Welcome back to the MAS-HSC Management portal.</p>
+            <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+                <div>
+                    <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-primary">Altar Servers</h1>
+                    <p className="text-muted-foreground mt-1 text-sm md:text-base">Manage all active and inactive ministry members.</p>
+                </div>
+                <Link href="/servers/new" className="w-full sm:w-auto">
+                    <Button variant="accent" className="shadow-lg shadow-accent/20 px-6 w-full">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add New Server
+                    </Button>
+                </Link>
             </header>
 
             {/* Stats Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                 <StatCard
                     title="Total Servers"
                     value="42"

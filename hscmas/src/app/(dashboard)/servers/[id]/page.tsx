@@ -2,65 +2,292 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { 
+    User, Phone, Users, ChevronLeft, AlertCircle, ShieldCheck, Camera, Plus, Calendar, CheckCircle2, XCircle, Clock, TrendingUp, History
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 export default async function ServerDetailPage(props: { params: Promise<{ id: string }> }) {
     const params = await props.params;
     const supabase = await createClient()
+
+    // Fetch server profile
     const { data: server } = await supabase.from('servers').select('*').eq('id', params.id).single()
 
     if (!server) {
         notFound()
     }
 
+    // Fetch attendance history joined with mass details
+    const { data: attendanceHistory, error } = await supabase
+        .from('attendance')
+        .select(`
+            id,
+            status,
+            masses:mass_id (
+                id,
+                title,
+                date,
+                start_time,
+                type
+            )
+        `)
+        .eq('server_id', params.id)
+
+    if (error) {
+        console.error('Error fetching attendance history:', error)
+    }
+
+    // Sort by mass date manually
+    attendanceHistory?.sort((a: any, b: any) => {
+        const massA = Array.isArray(a.masses) ? a.masses[0] : a.masses;
+        const massB = Array.isArray(b.masses) ? b.masses[0] : b.masses;
+        const dateA = massA ? new Date(`${massA.date} ${massA.start_time}`).getTime() : 0;
+        const dateB = massB ? new Date(`${massB.date} ${massB.start_time}`).getTime() : 0;
+        return dateB - dateA;
+    });
+
+    // Calculate Stats
+    const totalMasses = attendanceHistory?.length || 0
+    const presentCount = attendanceHistory?.filter((a: any) => a.status === 'present').length || 0
+    const lateCount = attendanceHistory?.filter((a: any) => a.status === 'late').length || 0
+    const excusedCount = attendanceHistory?.filter((a: any) => a.status === 'excused').length || 0
+    
+    // Attendance Rate Logic: (Presents + (Lates * 0.7)) / Total
+    const attendanceRate = totalMasses > 0 
+        ? Math.round(((presentCount + (lateCount * 0.7) + (excusedCount * 1.0)) / totalMasses) * 100) 
+        : 0
+
+    // Streak Logic: Find consecutive 'present' statuses from the beginning of the list
+    let currentStreak = 0
+    if (attendanceHistory) {
+        for (const record of attendanceHistory) {
+            if (record.status === 'present') {
+                currentStreak++
+            } else if (record.status !== 'excused') { // Excused doesn't break steak? 
+                break
+            }
+        }
+    }
+
+    // Points System: 10 pts per Present, 7 pts per Late, 0 for others
+    const totalPoints = (presentCount * 10) + (lateCount * 7) + (excusedCount * 5)
+
+    const rateColor = attendanceRate >= 90 ? 'text-green-500' : attendanceRate >= 75 ? 'text-accent' : 'text-yellow-500'
+
     return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <h1 className="text-3xl font-bold">{server.first_name} {server.last_name}</h1>
-                <div className="space-x-2">
-                    <Link href={`/servers/${server.id}/edit`}>
-                        <Button variant="outline">Edit Profile</Button>
+        <div className="max-w-6xl mx-auto space-y-8 pb-12">
+            <Link href="/servers">
+                <Button variant="ghost" size="sm" className="mb-4 text-muted-foreground hover:text-foreground">
+                    <ChevronLeft className="w-4 h-4 mr-1" />
+                    Back to Servers
+                </Button>
+            </Link>
+
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="flex items-center gap-5">
+                    <div className="w-16 h-16 md:w-20 md:h-20 rounded-[2rem] bg-accent/10 flex items-center justify-center text-2xl md:text-3xl font-black text-accent shadow-xl shadow-accent/5 border border-accent/20 overflow-hidden">
+                        {server.avatar_url ? (
+                            <img src={server.avatar_url} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                            <>{server.first_name[0]}{server.last_name[0]}</>
+                        )}
+                    </div>
+                    <div>
+                        <div className="flex items-center gap-3 mb-1">
+                            <h1 className="text-2xl md:text-4xl font-bold tracking-tight">{server.first_name} {server.last_name}</h1>
+                            <span className={cn(
+                                "px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border",
+                                server.status === 'active' 
+                                    ? "bg-green-500/10 text-green-500 border-green-500/20" 
+                                    : "bg-red-500/10 text-red-500 border-red-500/20"
+                            )}>
+                                {server.status}
+                            </span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                            <p className="text-muted-foreground font-medium flex items-center gap-2">
+                                <Users className="w-4 h-4" />
+                                {server.group_name || 'Altar Server'}
+                            </p>
+                            <span className="text-muted-foreground/30 hidden sm:inline">•</span>
+                            <p className="text-accent font-bold flex items-center gap-2 text-sm">
+                                <TrendingUp className="w-4 h-4" />
+                                {currentStreak} Service Streak
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div className="flex items-center gap-3">
+                    <Link href={`/servers/${server.id}/edit`} className="flex-1 sm:flex-none">
+                        <Button variant="outline" className="w-full rounded-xl">Edit Profile</Button>
                     </Link>
-                    <Button variant="destructive">Archive</Button>
+                    <Button variant="destructive" className="flex-1 sm:flex-none rounded-xl">Archive</Button>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Profile</CardTitle>
+            {/* Stats Overview */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                <StatCard 
+                    label="Attendance Rate" 
+                    value={`${attendanceRate}%`} 
+                    sub="Overall performance" 
+                    icon={TrendingUp} 
+                    color={rateColor}
+                />
+                <StatCard 
+                    label="Ministry Points" 
+                    value={totalPoints} 
+                    sub="Accumulated score" 
+                    icon={TrendingUp} 
+                    color="text-accent"
+                />
+                <StatCard 
+                    label="Present" 
+                    value={presentCount} 
+                    sub={`${totalMasses} total services`} 
+                    icon={CheckCircle2} 
+                    color="text-green-500"
+                />
+                <StatCard 
+                    label="Lates/Excused" 
+                    value={lateCount + excusedCount} 
+                    sub="Managed exceptions" 
+                    icon={Clock} 
+                    color="text-yellow-500"
+                />
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Profile Details */}
+                <Card className="border-none shadow-xl bg-card/40 backdrop-blur-md h-fit">
+                    <CardHeader className="border-b border-border/50">
+                        <CardTitle className="text-xl">Contact Information</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-2">
-                        <div>
-                            <span className="text-zinc-500 block text-xs uppercase tracking-wider">Status</span>
-                            <span className="capitalize font-medium">{server.status}</span>
-                        </div>
-                        <div>
-                            <span className="text-zinc-500 block text-xs uppercase tracking-wider">Group</span>
-                            <span className="font-medium">{server.group_name || 'N/A'}</span>
-                        </div>
-                        <div>
-                            <span className="text-zinc-500 block text-xs uppercase tracking-wider">Contact</span>
-                            <span className="font-medium">{server.contact_number || 'N/A'}</span>
-                        </div>
-                        <div>
-                            <span className="text-zinc-500 block text-xs uppercase tracking-wider">Date Joined</span>
-                            <span className="font-medium">{new Date(server.date_joined).toLocaleDateString()}</span>
-                        </div>
+                    <CardContent className="pt-6 space-y-6">
+                        <DetailItem label="Phone Number" value={server.contact_number || 'No contact provided'} icon={Phone} />
+                        <DetailItem label="Group Assignment" value={server.group_name || 'General Members'} icon={Users} />
+                        <DetailItem 
+                            label="Member Since" 
+                            value={new Date(server.date_joined).toLocaleDateString(undefined, { dateStyle: 'long' })} 
+                            icon={Calendar} 
+                        />
                     </CardContent>
                 </Card>
 
-                <Card className="md:col-span-2">
-                    <CardHeader>
-                        <CardTitle>Recent Attendance</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-zinc-500 text-sm">
-                            No attendance records yet.
+                {/* Attendance History */}
+                <Card className="lg:col-span-2 border-none shadow-xl bg-card/40 backdrop-blur-md overflow-hidden">
+                    <CardHeader className="border-b border-border/50 pb-6 flex flex-row items-center justify-between">
+                        <div>
+                            <CardTitle className="text-xl">Attendance History</CardTitle>
+                            <CardDescription>All-time record of liturgical participation.</CardDescription>
                         </div>
+                        <div className="p-3 bg-accent/10 rounded-2xl border border-accent/20">
+                            <History className="w-5 h-5 text-accent" />
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        {attendanceHistory && attendanceHistory.length > 0 ? (
+                            <div className="divide-y divide-border/20">
+                                {attendanceHistory.map((record: any) => {
+                                    // Handle cases where masses might be an array or an object
+                                    const mass = Array.isArray(record.masses) ? record.masses[0] : record.masses;
+                                    
+                                    if (!mass) return null;
+
+                                    return (
+                                        <div key={record.id} className="p-4 md:p-6 flex items-center justify-between hover:bg-secondary/30 transition-colors group">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-12 h-12 rounded-2xl bg-secondary flex flex-col items-center justify-center border border-border group-hover:border-accent/40 shadow-sm transition-colors">
+                                                    <span className="text-[9px] uppercase font-bold text-muted-foreground leading-none mb-0.5">
+                                                        {new Date(mass.date).toLocaleString('default', { month: 'short' })}
+                                                    </span>
+                                                    <span className="text-base font-black text-accent leading-none">
+                                                        {new Date(mass.date).getDate()}
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-bold text-base line-clamp-1">{mass.title}</h4>
+                                                    <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+                                                        <span className="flex items-center gap-1">
+                                                            <Clock className="w-3 h-3" />
+                                                            {mass.start_time}
+                                                        </span>
+                                                        <span>•</span>
+                                                        <span className="capitalize">{mass.type}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="shrink-0 flex items-center gap-2">
+                                                <StatusBadge status={record.status} />
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <div className="p-12 text-center">
+                                <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-secondary mb-4">
+                                    <Calendar className="w-6 h-6 text-muted-foreground/40" />
+                                </div>
+                                <h4 className="font-medium text-foreground">No attendance records</h4>
+                                <p className="text-sm text-muted-foreground mt-1 max-w-[240px] mx-auto">This server hasn't been marked in any services yet.</p>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             </div>
         </div>
+    )
+}
+
+function StatCard({ label, value, sub, icon: Icon, color = "text-foreground" }: any) {
+    return (
+        <Card className="border-none shadow-lg bg-card/60 backdrop-blur-sm">
+            <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{label}</span>
+                    <Icon className={cn("w-4 h-4", color)} />
+                </div>
+                <div className={cn("text-3xl font-black mb-1", color)}>{value}</div>
+                <p className="text-xs text-muted-foreground">{sub}</p>
+            </CardContent>
+        </Card>
+    )
+}
+
+function DetailItem({ label, value, icon: Icon }: any) {
+    return (
+        <div className="flex items-start gap-3 group">
+            <div className="mt-1 w-8 h-8 rounded-xl bg-secondary flex items-center justify-center border border-border group-hover:bg-accent/10 group-hover:border-accent/20 transition-colors">
+                <Icon className="w-4 h-4 text-muted-foreground group-hover:text-accent transition-colors" />
+            </div>
+            <div>
+                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">{label}</span>
+                <p className="font-bold text-foreground">{value}</p>
+            </div>
+        </div>
+    )
+}
+
+function StatusBadge({ status }: { status: string }) {
+    const configs: any = {
+        present: { icon: CheckCircle2, class: "bg-green-500/10 text-green-500 border-green-500/20", label: "Present" },
+        absent: { icon: XCircle, class: "bg-red-500/10 text-red-500 border-red-500/20", label: "Absent" },
+        late: { icon: Clock, class: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20", label: "Late" },
+        excused: { icon: AlertCircle, class: "bg-blue-500/10 text-blue-500 border-blue-500/20", label: "Excused" },
+    }
+    const config = configs[status] || configs.present
+    const Icon = config.icon
+
+    return (
+        <span className={cn(
+            "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border",
+            config.class
+        )}>
+            <Icon className="w-3 h-3" />
+            {config.label}
+        </span>
     )
 }
