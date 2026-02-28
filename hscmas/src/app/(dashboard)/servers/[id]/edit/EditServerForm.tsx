@@ -146,6 +146,7 @@ export function EditServerForm({ server }: { server: any }) {
                     <option value="Knights of the Altar">Knights of the Altar</option>
                     <option value="Junior Servers">Junior Servers</option>
                     <option value="Senior Servers">Senior Servers</option>
+                    <option value="Observer">Observer</option>
                 </select>
             </div>
 

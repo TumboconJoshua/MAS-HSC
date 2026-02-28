@@ -14,6 +14,8 @@ import {
     Camera
 } from 'lucide-react'
 
+import { ServerFilters } from './ServerFilters'
+
 interface Server {
     id: string
     first_name: string
@@ -25,11 +27,27 @@ interface Server {
     avatar_url: string | null
 }
 
-export default async function ServersPage() {
+export default async function ServersPage({
+    searchParams,
+}: {
+    searchParams: Promise<{ search?: string; status?: string }>
+}) {
+    const { search, status } = await searchParams
     const supabase = await createClient()
-    const { data: servers } = await supabase
+
+    let query = supabase
         .from('servers')
         .select('*')
+
+    if (search) {
+        query = query.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%`)
+    }
+
+    if (status) {
+        query = query.eq('status', status)
+    }
+
+    const { data: servers } = await query
         .order('last_name', { ascending: true }) as { data: Server[] | null }
 
     return (
@@ -48,25 +66,7 @@ export default async function ServersPage() {
             </header>
 
             {/* Toolbar */}
-            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between p-4 bg-card/40 backdrop-blur-sm rounded-2xl border border-border">
-                <div className="relative w-full sm:max-w-xs">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <input
-                        type="text"
-                        placeholder="Search servers..."
-                        className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all"
-                    />
-                </div>
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <Button variant="outline" size="sm" className="flex-1 sm:flex-none">
-                        <Filter className="w-4 h-4 mr-2" />
-                        Filter
-                    </Button>
-                    <Button variant="outline" size="sm" className="flex-1 sm:flex-none">
-                        Active Only
-                    </Button>
-                </div>
-            </div>
+            <ServerFilters />
 
             {/* Servers Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
