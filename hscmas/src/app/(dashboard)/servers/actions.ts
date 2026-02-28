@@ -70,6 +70,20 @@ export async function updateServer(id: string, formData: FormData) {
     return { success: true }
 }
 
+export async function deleteServer(id: string) {
+    const supabase = await createClient()
+
+    const { error } = await supabase.from('servers').delete().eq('id', id)
+
+    if (error) {
+        console.error('Error deleting server:', error)
+        return { error: 'Failed to delete server record' }
+    }
+
+    revalidatePath('/servers')
+    return { success: true }
+}
+
 async function uploadAvatar(supabase: any, file: File) {
     const fileExt = file.name.split('.').pop()
     const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`

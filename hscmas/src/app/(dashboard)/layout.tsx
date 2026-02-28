@@ -6,6 +6,7 @@ import {
     LayoutDashboard,
     Users,
     CalendarCheck,
+    CalendarRange,
     ShieldCheck,
     LogOut,
     Church,
@@ -77,6 +78,7 @@ export default function DashboardLayout({
                     <NavItem href="/" icon={LayoutDashboard} label="Dashboard" active={pathname === '/'} />
                     <NavItem href="/servers" icon={Users} label="Altar Servers" active={pathname.startsWith('/servers')} />
                     <NavItem href="/attendance" icon={CalendarCheck} label="Attendance" active={pathname.startsWith('/attendance')} />
+                    <NavItem href="/schedule" icon={CalendarRange} label="Schedule" active={pathname.startsWith('/schedule')} />
                     <NavItem href="/equipment" icon={ShieldCheck} label="Equipment" active={pathname.startsWith('/equipment')} />
                 </nav>
 

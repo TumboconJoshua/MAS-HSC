@@ -10,7 +10,9 @@ import {
     ArrowRight,
     TrendingUp,
     Activity,
-    Clock
+    Clock,
+    Trophy,
+    Star
 } from 'lucide-react'
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
@@ -53,7 +55,26 @@ export default async function DashboardPage() {
     
     const alertsCount = equipmentAlerts?.length || 0
 
-// 5. Consolidated Activity (Latest 5 actions across system)
+    // 5. Fetch Server of the Month (Highest attendance in the current/past month)
+    const { data: serverStats } = await supabase
+        .from('attendance')
+        .select('server_id, status')
+        .in('status', ['present', 'service', 'late'])
+
+    const serverAttendanceCounts: Record<string, number> = {}
+    serverStats?.forEach((stat: any) => {
+        serverAttendanceCounts[stat.server_id] = (serverAttendanceCounts[stat.server_id] || 0) + 1
+    })
+
+    const topServerId = Object.keys(serverAttendanceCounts).reduce((a, b) => 
+        serverAttendanceCounts[a] > serverAttendanceCounts[b] ? a : b, 
+    '')
+
+    const { data: topServer } = topServerId 
+        ? await supabase.from('servers').select('*').eq('id', topServerId).single()
+        : { data: null }
+
+    // 6. Consolidated Activity (Latest 5 actions across system)
     const [
         { data: rawAttendance },
         { data: recentServers },
@@ -157,17 +178,86 @@ export default async function DashboardPage() {
                 />
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Recent Activities */}
-                <Card className="lg:col-span-2 border border-border shadow-md bg-card">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                {/* 1. Server of the Month Recognition (Column 1) */}
+                {topServer && (
+                    <Card className="border border-accent/30 shadow-2xl bg-card rounded-[2.5rem] overflow-hidden relative group/award flex flex-col h-full">
+                        <div className="absolute inset-0 z-0 opacity-20 group-hover:opacity-30 transition-opacity duration-700">
+                             <img 
+                                src="/images/award_bg.png" 
+                                alt="" 
+                                className="w-full h-full object-cover"
+                             />
+                        </div>
+                        <div className="absolute inset-0 bg-gradient-to-br from-accent/10 via-transparent to-background/80 z-0"></div>
+                        
+                        <CardHeader className="relative z-10 pb-2 flex flex-row items-center justify-between">
+                            <div>
+                                <CardTitle className="text-sm font-bold uppercase tracking-widest text-accent flex items-center gap-2">
+                                    <Trophy className="w-4 h-4" />
+                                    Award
+                                </CardTitle>
+                                <CardDescription className="font-bold text-foreground/80 mt-1 uppercase text-[10px] tracking-tighter">
+                                    Server of the Month
+                                </CardDescription>
+                            </div>
+                            <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center border border-accent/30">
+                                <Star className="w-5 h-5 text-accent fill-accent" />
+                            </div>
+                        </CardHeader>
+
+                        <CardContent className="relative z-10 pt-4 flex flex-col items-center text-center pb-8 flex-1 justify-center">
+                            <div className="relative mb-6">
+                                <div className="w-24 h-24 rounded-[2rem] bg-secondary flex items-center justify-center border-2 border-accent/40 shadow-2xl overflow-hidden group-hover/award:scale-105 transition-transform duration-500">
+                                    {topServer.avatar_url ? (
+                                        <img src={topServer.avatar_url} alt="" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <span className="text-3xl font-black text-accent">{topServer.first_name[0]}{topServer.last_name[0]}</span>
+                                    )}
+                                </div>
+                                <div className="absolute -bottom-2 -right-2 bg-accent text-accent-foreground w-8 h-8 rounded-full flex items-center justify-center shadow-lg border-2 border-background">
+                                    <Star className="w-4 h-4 fill-current" />
+                                </div>
+                            </div>
+                            
+                            <h3 className="text-xl font-black tracking-tight mb-1">{topServer.first_name} {topServer.last_name}</h3>
+                            <p className="text-accent font-bold text-[10px] uppercase tracking-widest mb-6 italic">
+                                {topServer.group_name || 'Altar Server'}
+                            </p>
+
+                            <div className="grid grid-cols-2 gap-3 w-full max-w-[200px]">
+                                <div className="p-3 bg-secondary/50 rounded-2xl border border-border group-hover/award:border-accent/20 transition-colors">
+                                    <div className="text-lg font-black text-accent">{serverAttendanceCounts[topServer.id]}</div>
+                                    <div className="text-[9px] font-bold text-muted-foreground uppercase">Services</div>
+                                </div>
+                                <div className="p-3 bg-secondary/50 rounded-2xl border border-border group-hover/award:border-accent/20 transition-colors">
+                                    <div className="text-lg font-black text-green-500">100%</div>
+                                    <div className="text-[9px] font-bold text-muted-foreground uppercase">Rate</div>
+                                </div>
+                            </div>
+
+                            <Link href={`/servers/${topServer.id}`} className="mt-8">
+                                <Button variant="accent" size="sm" className="rounded-full shadow-lg shadow-accent/20 h-10 px-8 font-bold">
+                                    Achievements
+                                </Button>
+                            </Link>
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* 2. Recent Activities (Columns 2-3) */}
+                <Card className={cn(
+                    "border border-border shadow-md bg-card flex flex-col h-full", 
+                    topServer ? "lg:col-span-2" : "lg:col-span-3"
+                )}>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2 border-b border-border/50">
                         <div>
                             <CardTitle className="text-lg font-semibold">Live Activity</CardTitle>
-                            <CardDescription>Recent updates and system actions.</CardDescription>
+                            <CardDescription>Recent updates and server tracking.</CardDescription>
                         </div>
                         <TrendingUp className="w-5 h-5 text-muted-foreground" />
                     </CardHeader>
-                    <CardContent className="pt-6">
+                    <CardContent className="pt-6 flex-1">
                         <div className="space-y-6">
                             {allActivities.length > 0 ? (
                                 allActivities.map((act) => (
@@ -193,9 +283,9 @@ export default async function DashboardPage() {
                     </CardContent>
                 </Card>
 
-                {/* Quick Actions */}
-                <div className="space-y-6">
-                    <Card className="border border-accent/20 shadow-md bg-accent/5 overflow-hidden">
+                {/* 3. Quick Actions & Status (Column 4) */}
+                <div className="space-y-6 flex flex-col h-full">
+                    <Card className="border border-accent/20 shadow-md bg-accent/5 overflow-hidden flex-1">
                         <CardHeader className="pb-4">
                             <CardTitle className="text-lg font-semibold text-accent flex items-center gap-2">
                                 <Plus className="w-5 h-5" />
@@ -218,7 +308,7 @@ export default async function DashboardPage() {
                             <Link href="/servers/new" className="w-full">
                                 <Button variant="ghost" className="w-full justify-start hover:bg-accent/10 hover:text-accent transition-all duration-300 group rounded-xl border border-transparent hover:border-accent/20">
                                     <Users className="w-4 h-4 mr-2 text-accent group-hover:scale-110 transition-transform" />
-                                    <span className="font-medium">Register New Member</span>
+                                    <span className="font-medium">Register Member</span>
                                 </Button>
                             </Link>
                         </CardContent>
@@ -227,7 +317,7 @@ export default async function DashboardPage() {
                     <Card className="border border-border shadow-md bg-card">
                         <CardContent className="p-6">
                             <div className="flex items-center justify-between mb-4">
-                                <h4 className="font-semibold text-sm tracking-tight text-foreground/80">System Status</h4>
+                                <h4 className="font-semibold text-xs tracking-tight text-foreground/80">System Status</h4>
                                 <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-green-500/10 border border-green-500/20">
                                     <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse"></span>
                                     <span className="text-[10px] font-bold text-green-500 uppercase tracking-wider">Live</span>
@@ -238,7 +328,7 @@ export default async function DashboardPage() {
                                 <span>Last Sync: {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                             </div>
                             <p className="text-[10px] text-muted-foreground/60 leading-relaxed italic">
-                                Real-time synchronization active with Holy Spirit Chapel servers.
+                                Real-time sync with Chapel servers.
                             </p>
                         </CardContent>
                     </Card>

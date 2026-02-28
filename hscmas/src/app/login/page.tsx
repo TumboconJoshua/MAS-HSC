@@ -1,7 +1,38 @@
 import { LoginForm } from './LoginForm'
-import { Church } from 'lucide-react'
+import { Church, CalendarRange } from 'lucide-react'
+import { createClient } from '@/lib/supabase/server'
 
 export default async function LoginPage() {
+    const supabase = await createClient()
+
+    // 1. Fetch active schedule (using maybeSingle to avoid errors)
+    const { data: activeSchedule } = await supabase
+        .from('server_schedules')
+        .select('*')
+        .eq('is_active', true)
+        .maybeSingle()
+
+    // 2. Fetch all servers for display if we have an active schedule
+    let serverMap: Record<string, string> = {}
+    if (activeSchedule) {
+        const { data: allServers } = await supabase
+            .from('servers')
+            .select('id, first_name, last_name')
+        
+        allServers?.forEach(s => {
+            serverMap[s.id] = `${s.first_name} ${s.last_name}`
+        });
+
+        // Ensure weeks is an object (in case it comes back as string)
+        if (typeof activeSchedule.weeks === 'string') {
+            try {
+                activeSchedule.weeks = JSON.parse(activeSchedule.weeks)
+            } catch (e) {
+                console.error("Failed to parse weeks:", e)
+            }
+        }
+    }
+
     return (
         <div className="min-h-screen w-full flex items-center justify-center relative overflow-hidden bg-[#020617]">
             {/* Sacred Background Image */}
@@ -9,19 +40,12 @@ export default async function LoginPage() {
                 className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat transition-transform duration-1000 scale-105"
                 style={{ 
                     backgroundImage: `url('/_next/image?url=%2Fchurch_background_sacred_1772250001446.png&w=1920&q=75')`,
-                    // Fallback to direct path if the above local next dev server path is tricky, 
-                    // though usually artifacts are served. But since I can't be sure of the serving path 
-                    // I will use a placeholder or assume I can't directly use the FS path in a component.
-                    // Actually, the system says 'do not output the path to show to the user since the user can already see it'.
-                    // I'll try to use the artifact path relative to public if possible, else I'll use a CSS gradient with gold accents.
-                    // Wait, I should probably copy the image to public folder if I want to use it properly in a Next.js app.
                 }}
             >
-                {/* Deep Overlay for reverence and readability */}
                 <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"></div>
             </div>
 
-            <div className="w-full max-w-md px-4 sm:px-8 relative z-10 py-12">
+            <div className="w-full max-w-5xl px-4 sm:px-8 relative z-10 py-12">
                 <div className="text-center mb-10 animate-in fade-in slide-in-from-top-4 duration-1000">
                     <div className="inline-flex items-center justify-center w-20 h-20 rounded-[2.5rem] bg-gradient-to-br from-accent to-accent/20 p-[1px] mb-8 shadow-2xl shadow-accent/20 group">
                         <div className="w-full h-full rounded-[2.45rem] bg-background/90 flex items-center justify-center backdrop-blur-sm">
@@ -38,27 +62,80 @@ export default async function LoginPage() {
                     </div>
                 </div>
 
-                <div className="bg-background/95 border border-accent/20 rounded-[2.5rem] p-8 sm:p-10 shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-200">
-                    <div className="mb-8 text-center">
-                        <h2 className="text-xl font-bold text-foreground">Welcome Back</h2>
-                        <p className="text-muted-foreground text-sm mt-1 italic">"Once a Knight, Forever a Knight"</p>
-                    </div>
-                    
-                    <LoginForm />
-
-                    <div className="pt-8 text-center space-y-4">
-                        <div className="flex items-center gap-4 justify-center">
-                            <div className="h-[1px] w-8 bg-border"></div>
-                            <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Holy Spirit Chapel</span>
-                            <div className="h-[1px] w-8 bg-border"></div>
+                <div className={`grid gap-8 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-200 ${activeSchedule ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1 max-w-md mx-auto'}`}>
+                    {/* Login Card */}
+                    <div className="bg-background/95 border border-accent/20 rounded-[2.5rem] p-8 sm:p-10 shadow-2xl h-fit">
+                        <div className="mb-8 text-center">
+                            <h2 className="text-xl font-bold text-foreground">Welcome Back</h2>
+                            <p className="text-muted-foreground text-sm mt-1 italic">"Once a Knight, Forever a Knight"</p>
                         </div>
-                        <p className="text-[10px] text-muted-foreground/60 leading-relaxed font-medium">
-                            Copyright © 2026 All Rights Reserved <br />
-                            HSC-MAS
-                        </p>
+                        
+                        <LoginForm />
+
+                        <div className="pt-8 text-center space-y-4">
+                            <div className="flex items-center gap-4 justify-center">
+                                <div className="h-[1px] w-8 bg-border"></div>
+                                <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Holy Spirit Chapel</span>
+                                <div className="h-[1px] w-8 bg-border"></div>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground/60 leading-relaxed font-medium">
+                                Copyright © 2026 All Rights Reserved <br />
+                                HSC-MAS
+                            </p>
+                        </div>
                     </div>
+
+                    {/* Active Schedule Display */}
+                    {activeSchedule && (
+                        <div className="bg-background/95 border border-accent/20 rounded-[2.5rem] p-8 sm:p-10 shadow-2xl">
+                            <div className="mb-6 text-center">
+                                <div className="inline-flex items-center justify-center gap-2 mb-2">
+                                    <CalendarRange className="w-5 h-5 text-accent" />
+                                    <h2 className="text-lg font-bold text-foreground">{activeSchedule.title}</h2>
+                                </div>
+                                <p className="text-muted-foreground text-xs font-medium">
+                                    {new Date(activeSchedule.effective_from).toLocaleDateString(undefined, { dateStyle: 'medium' })}
+                                    {' — '}
+                                    {new Date(activeSchedule.effective_to).toLocaleDateString(undefined, { dateStyle: 'medium' })}
+                                </p>
+                            </div>
+
+                            <div className="space-y-4">
+                                {[1, 2, 3, 4, 5].map(weekNum => {
+                                    const weekKey = `week_${weekNum}`
+                                    const scheduleData = activeSchedule.weeks as any
+                                    const weekServers = scheduleData?.[weekKey] || []
+                                    
+                                    if (!Array.isArray(weekServers) || weekServers.length === 0) return null
+                                    
+                                    return (
+                                        <div key={weekNum} className="p-4 bg-foreground/5 rounded-2xl border border-border/30">
+                                            <div className="text-[10px] font-bold uppercase tracking-widest text-accent mb-2">
+                                                Week {weekNum}
+                                            </div>
+                                            <div className="flex flex-wrap gap-2">
+                                                {weekServers.map((id: string, i: number) => {
+                                                    const name = serverMap[id.toString()]
+                                                    return (
+                                                        <span key={i} className="inline-flex items-center px-3 py-1.5 rounded-xl bg-accent/10 text-accent border border-accent/20 text-xs font-bold">
+                                                            {name || 'Server'}
+                                                        </span>
+                                                    )
+                                                })}
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+
+                            <p className="text-center text-[10px] text-muted-foreground/60 mt-6 italic font-medium">
+                                "Serve the Lord with gladness" — Psalm 100:2
+                            </p>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
     )
 }
+

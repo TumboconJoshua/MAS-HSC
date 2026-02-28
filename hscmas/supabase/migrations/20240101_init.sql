@@ -58,6 +58,16 @@ create table equipment_assignments (
   status text default 'assigned' check (status in ('assigned', 'returned', 'lost'))
 );
 
+create table server_schedules (
+  id uuid default gen_random_uuid() primary key,
+  title text not null,
+  effective_from date not null,
+  effective_to date not null,
+  weeks jsonb default '{}',
+  is_active boolean default false,
+  created_at timestamptz default now()
+);
+
 -- Enable RLS
 alter table profiles enable row level security;
 alter table servers enable row level security;
@@ -65,6 +75,7 @@ alter table masses enable row level security;
 alter table attendance enable row level security;
 alter table equipment enable row level security;
 alter table equipment_assignments enable row level security;
+alter table server_schedules enable row level security;
 
 -- Policies (simple start: allow authenticated users to read all, admins full access)
 -- Note: You need to implement custom claims or role checks for accurate policies.
@@ -90,3 +101,7 @@ create policy "Authenticated users can manage equipment" on equipment for all us
 
 create policy "Assignments viewable by authenticated users" on equipment_assignments for select using (auth.role() = 'authenticated');
 create policy "Authenticated users can manage assignments" on equipment_assignments for all using (auth.role() = 'authenticated');
+
+-- Server Schedules: public read (for login page), authenticated manage
+create policy "Schedules are publicly viewable" on server_schedules for select using (true);
+create policy "Authenticated users can manage schedules" on server_schedules for all using (auth.role() = 'authenticated');

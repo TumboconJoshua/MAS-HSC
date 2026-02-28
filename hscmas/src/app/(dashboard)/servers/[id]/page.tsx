@@ -9,6 +9,7 @@ import {
 import { cn } from '@/lib/utils'
 
 import { Pagination } from '@/components/ui/pagination'
+import { DeleteServerButton } from './DeleteServerButton'
 
 export default async function ServerDetailPage(props: { 
     params: Promise<{ id: string }>,
@@ -151,7 +152,7 @@ export default async function ServerDetailPage(props: {
                     <Link href={`/servers/${server.id}/edit`} className="flex-1 sm:flex-none">
                         <Button variant="outline" className="w-full rounded-xl">Edit Profile</Button>
                     </Link>
-                    <Button variant="destructive" className="flex-1 sm:flex-none rounded-xl">Archive</Button>
+                    <DeleteServerButton serverId={server.id} serverName={`${server.first_name} ${server.last_name}`} />
                 </div>
             </div>
 
@@ -164,15 +165,15 @@ export default async function ServerDetailPage(props: {
                     icon={TrendingUp} 
                     color={rateColor}
                 />
-                <StatCard 
+                {/* <StatCard 
                     label="Ministry Points" 
                     value={totalPoints} 
                     sub="Accumulated score" 
                     icon={TrendingUp} 
                     color="text-accent"
-                />
+                /> */}
                 <StatCard 
-                    label="Services" 
+                    label="Total No. of Service" 
                     value={serviceCount} 
                     sub={`${presentCount} just present`} 
                     icon={ShieldCheck} 

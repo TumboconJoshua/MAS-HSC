@@ -1,7 +1,8 @@
 'use client'
 
-import React, { createContext, useContext, useState, useCallback } from 'react'
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { Modal } from './ui/modal'
+import { usePathname } from 'next/navigation'
 
 interface ConfirmOptions {
     title: string
@@ -30,6 +31,12 @@ export function ModalProvider({ children }: { children: React.ReactNode }) {
     const [isOpen, setIsOpen] = useState(false)
     const [options, setOptions] = useState<ConfirmOptions | null>(null)
     const [isLoading, setIsLoading] = useState(false)
+    const pathname = usePathname()
+
+    // Auto-close modal on route change
+    useEffect(() => {
+        setIsOpen(false)
+    }, [pathname])
 
     const confirm = useCallback((opts: ConfirmOptions) => {
         setOptions(opts)
@@ -41,9 +48,13 @@ export function ModalProvider({ children }: { children: React.ReactNode }) {
         setIsLoading(true)
         try {
             await options.action()
+            // If action completes without redirecting
             setIsOpen(false)
         } catch (error) {
+            // Next.js redirects throw a specific error, catch it or ignore if needed
+            // But we already handle it with the pathname effect
             console.error('Confirmation action failed:', error)
+            setIsOpen(false)
         } finally {
             setIsLoading(false)
             // Optional: reset options after a delay to allow exit animation to finish smoothly
