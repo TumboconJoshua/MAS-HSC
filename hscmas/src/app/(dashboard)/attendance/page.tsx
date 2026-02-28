@@ -74,7 +74,7 @@ export default async function AttendancePage() {
 
             {/* Attendance Stats */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card className="border-none shadow-md bg-card/60 backdrop-blur-sm">
+                <Card className="border border-border shadow-md bg-card">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium text-muted-foreground">Overall Attendance</CardTitle>
                     </CardHeader>
@@ -83,7 +83,7 @@ export default async function AttendancePage() {
                         <p className="text-xs text-muted-foreground mt-1">Average rate across all masses</p>
                     </CardContent>
                 </Card>
-                <Card className="border-none shadow-md bg-card/60 backdrop-blur-sm">
+                <Card className="border border-border shadow-md bg-card">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium text-muted-foreground">Total Participations</CardTitle>
                     </CardHeader>
@@ -92,7 +92,7 @@ export default async function AttendancePage() {
                         <p className="text-xs text-muted-foreground mt-1">Total server appearances</p>
                     </CardContent>
                 </Card>
-                <Card className="border-none shadow-md bg-card/60 backdrop-blur-sm">
+                <Card className="border border-border shadow-md bg-card">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium text-muted-foreground">Perfect Attendance</CardTitle>
                     </CardHeader>
@@ -104,7 +104,7 @@ export default async function AttendancePage() {
             </div>
 
             {/* Mass List */}
-            <Card className="border-none shadow-xl bg-card/40 backdrop-blur-md">
+            <Card className="border border-border shadow-xl bg-card">
                 <CardHeader className="flex flex-row items-center justify-between border-b border-border/50 pb-6">
                     <div>
                         <CardTitle className="text-xl">Mass Schedule</CardTitle>

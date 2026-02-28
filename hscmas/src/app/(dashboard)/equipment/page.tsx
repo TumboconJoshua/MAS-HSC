@@ -99,7 +99,7 @@ export default async function EquipmentPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {equipment && equipment.length > 0 ? (
                     equipment.map((item) => (
-                        <Card key={item.id} className="group border-none shadow-md hover:shadow-xl transition-all duration-300 bg-card/60 backdrop-blur-sm overflow-hidden">
+                        <Card key={item.id} className="group border border-border shadow-md hover:shadow-xl transition-all duration-300 bg-card overflow-hidden">
                             <CardHeader className="flex flex-row items-start justify-between pb-3">
                                 <div>
                                     <h3 className="font-bold text-lg leading-tight group-hover:text-accent transition-colors">{item.name}</h3>
@@ -156,7 +156,7 @@ export default async function EquipmentPage() {
 
 function StatCard({ title, value, description, icon: Icon, color }: any) {
     return (
-        <Card className="border-none shadow-md bg-card/60 backdrop-blur-sm">
+        <Card className="border border-border shadow-md bg-card">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
                 <Icon className={`w-4 h-4 ${color}`} />

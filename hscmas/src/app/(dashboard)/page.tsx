@@ -159,7 +159,7 @@ export default async function DashboardPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Recent Activities */}
-                <Card className="lg:col-span-2 border-none shadow-md bg-card/50 backdrop-blur-sm">
+                <Card className="lg:col-span-2 border border-border shadow-md bg-card">
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
                         <div>
                             <CardTitle className="text-lg font-semibold">Live Activity</CardTitle>
@@ -195,7 +195,7 @@ export default async function DashboardPage() {
 
                 {/* Quick Actions */}
                 <div className="space-y-6">
-                    <Card className="border-none shadow-md bg-accent/5 backdrop-blur-sm overflow-hidden border border-accent/10">
+                    <Card className="border border-accent/20 shadow-md bg-accent/5 overflow-hidden">
                         <CardHeader className="pb-4">
                             <CardTitle className="text-lg font-semibold text-accent flex items-center gap-2">
                                 <Plus className="w-5 h-5" />
@@ -224,7 +224,7 @@ export default async function DashboardPage() {
                         </CardContent>
                     </Card>
 
-                    <Card className="border-none shadow-md bg-card/40 backdrop-blur-sm border border-border/50">
+                    <Card className="border border-border shadow-md bg-card">
                         <CardContent className="p-6">
                             <div className="flex items-center justify-between mb-4">
                                 <h4 className="font-semibold text-sm tracking-tight text-foreground/80">System Status</h4>
@@ -250,7 +250,7 @@ export default async function DashboardPage() {
 
 function StatCard({ title, value, description, icon: Icon, trend, color }: any) {
     return (
-        <Card className="border-none shadow-md hover:shadow-lg transition-shadow bg-card/60 backdrop-blur-sm group">
+        <Card className="border border-border shadow-md hover:shadow-lg transition-shadow bg-card group">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
                 <div className={cn("p-2 rounded-lg bg-current/10", color)}>

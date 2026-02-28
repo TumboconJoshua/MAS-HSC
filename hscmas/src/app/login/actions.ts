@@ -17,20 +17,11 @@ export async function login(formData: FormData) {
 
     if (error) {
         console.error('Login Error:', error)
-        redirect('/login?error=true')
+        return { error: 'Invalid email or password' }
     }
 
     if (authData.session) {
-        console.log('Login Success! Session User ID:', authData.session.user.id)
-
-        // Ensure the session is set in the client (this should trigger setAll)
         await supabase.auth.setSession(authData.session)
-
-        // Final verification
-        const { data: { user } } = await supabase.auth.getUser()
-        console.log('Login Action: Verification check - User ID in client is:', user?.id || 'None')
-    } else {
-        console.error('Login Success but NO SESSION returned!')
     }
 
     revalidatePath('/', 'layout')

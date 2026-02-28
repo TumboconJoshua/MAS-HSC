@@ -72,7 +72,7 @@ export default async function ServersPage({
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {servers?.map((server) => (
                     <Link key={server.id} href={`/servers/${server.id}`}>
-                        <Card className="group relative border-none shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 bg-card/60 backdrop-blur-sm overflow-hidden">
+                        <Card className="group relative border border-border shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 bg-card overflow-hidden">
                             <div className="absolute top-0 left-0 w-1 h-full bg-accent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                             <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
                                 <div className="flex items-center gap-4">

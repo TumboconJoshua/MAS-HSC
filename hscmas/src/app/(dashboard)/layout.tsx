@@ -44,14 +44,14 @@ export default function DashboardLayout({
             {/* Mobile Sidebar Overlay/Backdrop */}
             {isSidebarOpen && (
                 <div 
-                    className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[40] lg:hidden animate-in fade-in duration-300"
+                    className="fixed inset-0 bg-black/60 z-[40] lg:hidden animate-in fade-in duration-300"
                     onClick={() => setIsSidebarOpen(false)}
                 />
             )}
 
             {/* Sidebar */}
             <aside className={cn(
-                "fixed inset-y-0 left-0 z-[50] w-72 border-r border-border bg-card flex flex-col shadow-xl transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 lg:shadow-sm",
+                "fixed inset-y-0 left-0 z-[50] w-72 border-r border-border bg-background flex flex-col shadow-xl transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 lg:shadow-none",
                 isSidebarOpen ? "translate-x-0" : "-translate-x-full"
             )}>
                 <div className="p-6 flex items-center justify-between border-b border-border h-16 shrink-0">
@@ -92,7 +92,7 @@ export default function DashboardLayout({
 
             {/* Main Content Area */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-                <header className="h-16 border-b border-border bg-background/80 backdrop-blur-md flex items-center justify-between px-4 lg:px-8 z-10 shrink-0">
+                <header className="h-16 border-b border-border bg-background flex items-center justify-between px-4 lg:px-8 z-10 shrink-0">
                     <div className="flex items-center gap-3 md:gap-4 overflow-hidden">
                         <button 
                             onClick={() => setIsSidebarOpen(true)}
