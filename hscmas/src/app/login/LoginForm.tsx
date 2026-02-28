@@ -32,43 +32,47 @@ export function LoginForm() {
     }
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-semibold ml-1 text-foreground/80">Email Address</label>
+                <label htmlFor="email" className="text-[10px] uppercase tracking-widest font-bold ml-1 text-muted-foreground">
+                    Email Address
+                </label>
                 <div className="relative group">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-accent transition-colors" />
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-accent transition-colors duration-300" />
                     <input
                         id="email"
                         name="email"
                         type="email"
-                        placeholder="name@example.com"
+                        placeholder="your@email.com"
                         required
-                        className="w-full pl-12 pr-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all placeholder:text-muted-foreground/50"
+                        className="w-full pl-12 pr-4 py-3 bg-secondary/30 border border-border rounded-2xl focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-all duration-300 placeholder:text-muted-foreground/30 text-sm"
                     />
                 </div>
             </div>
 
             <div className="space-y-2">
-                <label htmlFor="password" className="text-sm font-semibold ml-1 text-foreground/80">Password</label>
+                <label htmlFor="password" className="text-[10px] uppercase tracking-widest font-bold ml-1 text-muted-foreground">
+                    Password
+                </label>
                 <div className="relative group">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-accent transition-colors" />
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-accent transition-colors duration-300" />
                     <input
                         id="password"
                         name="password"
                         type="password"
                         placeholder="••••••••"
                         required
-                        className="w-full pl-12 pr-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all placeholder:text-muted-foreground/50"
+                        className="w-full pl-12 pr-4 py-3 bg-secondary/30 border border-border rounded-2xl focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-all duration-300 placeholder:text-muted-foreground/30 text-sm"
                     />
                 </div>
             </div>
 
-            <div className="flex flex-col gap-3 pt-2">
+            <div className="flex flex-col gap-3 pt-4">
                 <Button
                     type="submit"
                     variant="default"
                     disabled={isPending}
-                    className="w-full h-12 rounded-xl text-base font-bold shadow-lg shadow-primary/20"
+                    className="w-full h-12 rounded-2xl text-sm font-bold shadow-xl shadow-accent/20 bg-accent hover:bg-accent/90 text-white transition-all active:scale-[0.98]"
                 >
                     {isPending ? (
                         <>

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { logout } from '@/app/auth/actions'
+import { LogoutButton } from './LogoutButton'
 import {
     LayoutDashboard,
     Users,
@@ -81,12 +81,7 @@ export default function DashboardLayout({
                 </nav>
 
                 <div className="p-4 mt-auto border-t border-border">
-                    <form action={logout}>
-                        <button className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl bg-background border border-border text-sm font-medium text-red-500 hover:bg-red-50 hover:border-red-100 dark:hover:bg-red-500 dark:hover:border-red-500 dark:hover:text-white transition-all shadow-sm active:scale-95 group">
-                            <LogOut className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-                            <span>Sign Out</span>
-                        </button>
-                    </form>
+                    <LogoutButton />
                 </div>
             </aside>
 

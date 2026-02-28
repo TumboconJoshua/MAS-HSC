@@ -104,7 +104,7 @@ export default async function ServersPage({
                                     </div>
                                     <div className="flex items-center gap-2 text-muted-foreground justify-end">
                                         <Calendar className="w-3.5 h-3.5" />
-                                        <span>Jan 2024</span>
+                                        <span>{new Date(server.date_joined).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}</span>
                                     </div>
                                 </div>
 

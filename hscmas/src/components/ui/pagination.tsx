@@ -7,14 +7,31 @@ interface PaginationProps {
     currentPage: number
     totalPages: number
     basePath: string
+    searchParams?: Record<string, string | string[] | undefined>
 }
 
-export function Pagination({ currentPage, totalPages, basePath }: PaginationProps) {
+export function Pagination({ currentPage, totalPages, basePath, searchParams = {} }: PaginationProps) {
     if (totalPages <= 1) return null
 
     // Helper to generate the URL for a page
     const getPageUrl = (pageNumber: number) => {
-        return `${basePath}?page=${pageNumber}`
+        const params = new URLSearchParams()
+        
+        // Add existing search params
+        Object.entries(searchParams).forEach(([key, value]) => {
+            if (value && key !== 'page') {
+                if (Array.isArray(value)) {
+                    value.forEach(v => params.append(key, v))
+                } else {
+                    params.set(key, value as string)
+                }
+            }
+        })
+        
+        // Set page
+        params.set('page', pageNumber.toString())
+        
+        return `${basePath}?${params.toString()}`
     }
 
     // Determine the range of page numbers to show

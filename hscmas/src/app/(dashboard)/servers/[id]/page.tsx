@@ -196,11 +196,18 @@ export default async function ServerDetailPage(props: {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Profile Details */}
-                <Card className="border-none shadow-xl bg-card/40 backdrop-blur-md h-fit">
+                <Card className="border-none shadow-xl bg-card h-fit border border-border">
                     <CardHeader className="border-b border-border/50">
-                        <CardTitle className="text-xl">Contact Information</CardTitle>
+                        <CardTitle className="text-xl">Profile Information</CardTitle>
                     </CardHeader>
                     <CardContent className="pt-6 space-y-6">
+                        <DetailItem label="Full Name" value={`${server.first_name} ${server.last_name}`} icon={User} />
+                        <DetailItem label="Sex" value={server.sex || 'Not specified'} icon={Users} />
+                        <DetailItem 
+                            label="Birthday" 
+                            value={server.birthday ? new Date(server.birthday).toLocaleDateString(undefined, { dateStyle: 'long' }) : 'Not specified'} 
+                            icon={Calendar} 
+                        />
                         <DetailItem label="Phone Number" value={server.contact_number || 'No contact provided'} icon={Phone} />
                         <DetailItem label="Group Assignment" value={server.group_name || 'General Members'} icon={Users} />
                         <DetailItem 

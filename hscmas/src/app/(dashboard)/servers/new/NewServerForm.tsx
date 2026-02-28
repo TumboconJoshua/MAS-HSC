@@ -2,16 +2,16 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { updateServer } from '../../actions'
-import { toast } from 'react-hot-toast'
+import { createServer } from '../actions'
 import { Button } from '@/components/ui/button'
-import { Camera, Plus, User, Phone, ShieldCheck, Users, Loader2 } from 'lucide-react'
+import { User, Phone, Users, Camera, Plus, Loader2 } from 'lucide-react'
 import Link from 'next/link'
+import { toast } from 'react-hot-toast'
 
-export function EditServerForm({ server }: { server: any }) {
+export function NewServerForm() {
     const router = useRouter()
-    const [isSubmitting, setIsSubmitting] = useState(false)
-    const [previewUrl, setPreviewUrl] = useState<string | null>(server.avatar_url)
+    const [isPending, setIsPending] = useState(false)
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
@@ -21,37 +21,36 @@ export function EditServerForm({ server }: { server: any }) {
         }
     }
 
-    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault()
-        setIsSubmitting(true)
+    async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+        event.preventDefault()
+        setIsPending(true)
+
+        const formData = new FormData(event.currentTarget)
         
         try {
-            const formData = new FormData(e.currentTarget)
-            const result = await updateServer(server.id, formData)
-
+            const result = await createServer(formData)
             if (result?.error) {
                 toast.error(result.error)
-            } else if (result?.success) {
-                toast.success('Profile updated successfully!')
-                router.push(`/servers/${server.id}`)
+                setIsPending(false)
+            } else {
+                toast.success('Server profile created successfully!')
+                router.push('/servers')
                 router.refresh()
             }
-        } catch (error) {
+        } catch (error: any) {
             toast.error('An unexpected error occurred')
-            console.error(error)
-        } finally {
-            setIsSubmitting(false)
+            setIsPending(false)
         }
     }
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-8">
+        <form onSubmit={handleSubmit} className="space-y-8" encType="multipart/form-data">
             {/* Avatar Upload */}
             <div className="flex flex-col items-center gap-4 py-4">
                 <div className="relative group">
                     <div className="w-24 h-24 rounded-[2rem] bg-secondary flex items-center justify-center border-2 border-dashed border-border group-hover:border-accent/50 transition-colors overflow-hidden">
                         {previewUrl ? (
-                            <img src={previewUrl} alt="Profile" className="w-full h-full object-cover" />
+                            <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
                         ) : (
                             <Camera className="w-8 h-8 text-muted-foreground group-hover:text-accent transition-colors" />
                         )}
@@ -61,7 +60,14 @@ export function EditServerForm({ server }: { server: any }) {
                         className="absolute -bottom-2 -right-2 w-8 h-8 rounded-xl bg-accent text-accent-foreground flex items-center justify-center shadow-lg cursor-pointer hover:scale-110 active:scale-95 transition-all"
                     >
                         <Plus className="w-4 h-4" />
-                        <input type="file" id="avatar" name="avatar" accept="image/*" className="hidden" onChange={handleFileChange} />
+                        <input 
+                            type="file" 
+                            id="avatar" 
+                            name="avatar" 
+                            accept="image/*" 
+                            className="hidden" 
+                            onChange={handleFileChange}
+                        />
                     </label>
                 </div>
                 <div className="text-center">
@@ -69,6 +75,7 @@ export function EditServerForm({ server }: { server: any }) {
                     <p className="text-xs text-muted-foreground">Click the plus icon to upload</p>
                 </div>
             </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                     <label htmlFor="first_name" className="text-sm font-semibold ml-1 text-foreground/80 flex items-center gap-2">
@@ -79,9 +86,8 @@ export function EditServerForm({ server }: { server: any }) {
                         id="first_name"
                         name="first_name"
                         required
-                        defaultValue={server.first_name}
                         placeholder="e.g. Joshua"
-                        className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all"
+                        className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all placeholder:text-muted-foreground/40"
                     />
                 </div>
                 <div className="space-y-2">
@@ -93,9 +99,8 @@ export function EditServerForm({ server }: { server: any }) {
                         id="last_name"
                         name="last_name"
                         required
-                        defaultValue={server.last_name}
                         placeholder="e.g. Tumbocon"
-                        className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all"
+                        className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all placeholder:text-muted-foreground/40"
                     />
                 </div>
             </div>
@@ -110,7 +115,6 @@ export function EditServerForm({ server }: { server: any }) {
                         id="sex"
                         name="sex"
                         required
-                        defaultValue={server.sex}
                         className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all appearance-none cursor-pointer text-sm"
                     >
                         <option value="">Select Sex</option>
@@ -128,7 +132,6 @@ export function EditServerForm({ server }: { server: any }) {
                         name="birthday"
                         type="date"
                         required
-                        defaultValue={server.birthday}
                         className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all text-sm"
                     />
                 </div>
@@ -142,7 +145,7 @@ export function EditServerForm({ server }: { server: any }) {
                         name="date_joined"
                         type="date"
                         required
-                        defaultValue={server.date_joined}
+                        defaultValue={new Date().toISOString().split('T')[0]}
                         className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all text-sm"
                     />
                 </div>
@@ -157,59 +160,42 @@ export function EditServerForm({ server }: { server: any }) {
                     <input
                         id="contact_number"
                         name="contact_number"
-                        defaultValue={server.contact_number}
                         placeholder="+63 9xx xxx xxxx"
-                        className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all"
+                        className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all placeholder:text-muted-foreground/40"
                     />
                 </div>
+
                 <div className="space-y-2">
-                    <label htmlFor="status" className="text-sm font-semibold ml-1 text-foreground/80 flex items-center gap-2">
-                        <ShieldCheck className="w-4 h-4 text-accent" />
-                        Status
+                    <label htmlFor="group_name" className="text-sm font-semibold ml-1 text-foreground/80 flex items-center gap-2">
+                        <Users className="w-4 h-4 text-accent" />
+                        Assignment Group
                     </label>
                     <select
-                        id="status"
-                        name="status"
-                        defaultValue={server.status}
+                        id="group_name"
+                        name="group_name"
                         className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all appearance-none cursor-pointer"
                     >
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
+                        <option value="">Select a Group</option>
+                        <option value="Knights of the Altar">Knights of the Altar</option>
+                        <option value="Junior Servers">Junior Servers</option>
+                        <option value="Senior Servers">Senior Servers</option>
+                        <option value="Observer">Observer</option>
                     </select>
                 </div>
             </div>
 
-            <div className="space-y-2">
-                <label htmlFor="group_name" className="text-sm font-semibold ml-1 text-foreground/80 flex items-center gap-2">
-                    <Users className="w-4 h-4 text-accent" />
-                    Assignment Group
-                </label>
-                <select
-                    id="group_name"
-                    name="group_name"
-                    defaultValue={server.group_name}
-                    className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all appearance-none cursor-pointer"
-                >
-                    <option value="">Select a Group</option>
-                    <option value="Knights of the Altar">Knights of the Altar</option>
-                    <option value="Junior Servers">Junior Servers</option>
-                    <option value="Senior Servers">Senior Servers</option>
-                    <option value="Observer">Observer</option>
-                </select>
-            </div>
-
             <div className="pt-6 flex items-center justify-end gap-4 border-t border-border/50">
-                <Link href={`/servers/${server.id}`}>
-                    <Button variant="ghost" type="button" disabled={isSubmitting}>Cancel</Button>
+                <Link href="/servers">
+                    <Button variant="ghost" type="button" disabled={isPending}>Cancel</Button>
                 </Link>
-                <Button variant="accent" type="submit" disabled={isSubmitting} className="shadow-lg shadow-accent/20 px-8">
-                    {isSubmitting ? (
+                <Button variant="accent" type="submit" disabled={isPending} className="shadow-lg shadow-accent/20 px-8">
+                    {isPending ? (
                         <>
                             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Saving...
+                            Creating...
                         </>
                     ) : (
-                        'Save Changes'
+                        'Create Server Profile'
                     )}
                 </Button>
             </div>

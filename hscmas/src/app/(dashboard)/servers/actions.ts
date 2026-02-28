@@ -18,18 +18,22 @@ export async function createServer(formData: FormData) {
         last_name: formData.get('last_name') as string,
         contact_number: formData.get('contact_number') as string,
         group_name: formData.get('group_name') as string,
+        sex: formData.get('sex') as string,
+        birthday: formData.get('birthday') as string,
+        date_joined: formData.get('date_joined') as string || new Date().toISOString().split('T')[0],
         avatar_url: avatar_url,
+        status: 'active'
     }
 
     const { error } = await supabase.from('servers').insert(data)
 
     if (error) {
         console.error('Error creating server:', error)
-        redirect('/servers/new?error=true')
+        return { error: 'Failed to create server profile. Please check if first and last name are unique enough.' }
     }
 
     revalidatePath('/servers')
-    redirect('/servers')
+    return { success: true }
 }
 
 export async function updateServer(id: string, formData: FormData) {
@@ -40,6 +44,9 @@ export async function updateServer(id: string, formData: FormData) {
         last_name: formData.get('last_name') as string,
         contact_number: formData.get('contact_number') as string,
         group_name: formData.get('group_name') as string,
+        sex: formData.get('sex') as string,
+        birthday: formData.get('birthday') as string,
+        date_joined: formData.get('date_joined') as string,
         status: formData.get('status') as string,
     }
 

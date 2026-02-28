@@ -13,6 +13,8 @@ create table servers (
   last_name text not null,
   contact_number text,
   status text default 'active' check (status in ('active', 'inactive')),
+  sex text,
+  birthday date,
   date_joined date default current_date,
   group_name text,
   created_at timestamptz default now()
