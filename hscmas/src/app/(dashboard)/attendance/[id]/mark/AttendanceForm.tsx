@@ -7,6 +7,7 @@ import { CheckCircle2, XCircle, Clock, AlertCircle, Loader2, ShieldCheck } from 
 import { recordAttendance } from '../../actions'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { toast } from 'react-hot-toast'
 
 interface Server {
     id: string
@@ -62,10 +63,11 @@ export function AttendanceForm({ massId, servers, existingAttendance }: Attendan
         const result = await recordAttendance(massId, data)
         
         if (result.success) {
+            toast.success('Attendance saved successfully!')
             router.push('/attendance')
             router.refresh()
         } else {
-            alert('Failed to save attendance. Please try again.')
+            toast.error('Failed to save attendance. Please try again.')
             setIsSubmitting(false)
         }
     }

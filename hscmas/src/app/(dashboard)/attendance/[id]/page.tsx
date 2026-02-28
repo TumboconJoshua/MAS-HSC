@@ -16,7 +16,7 @@ import {
     ShieldCheck
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { deleteMass } from '../actions'
+import { DeleteMassButton } from '../DeleteMassButton'
 
 export default async function MassDetailPage(props: { params: Promise<{ id: string }> }) {
     const params = await props.params;
@@ -48,8 +48,6 @@ export default async function MassDetailPage(props: { params: Promise<{ id: stri
         `)
         .eq('mass_id', params.id)
 
-    const deleteMassWithId = deleteMass.bind(null, params.id)
-
     return (
         <div className="max-w-4xl mx-auto space-y-8 pb-12">
             <div className="flex items-center justify-between">
@@ -59,12 +57,11 @@ export default async function MassDetailPage(props: { params: Promise<{ id: stri
                         Back to Schedule
                     </Button>
                 </Link>
-                <form action={deleteMassWithId}>
-                    <Button variant="ghost" className="text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded-xl">
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Delete Record
-                    </Button>
-                </form>
+                <DeleteMassButton 
+                    massId={params.id} 
+                    label="Delete Record"
+                    className="text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded-xl"
+                />
             </div>
 
             <header className="space-y-4">

@@ -8,8 +8,17 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-export default async function ServerDetailPage(props: { params: Promise<{ id: string }> }) {
+import { Pagination } from '@/components/ui/pagination'
+
+export default async function ServerDetailPage(props: { 
+    params: Promise<{ id: string }>,
+    searchParams?: Promise<{ [key: string]: string | string[] | undefined }>
+}) {
     const params = await props.params;
+    const searchParams = await props.searchParams;
+    const currentPage = parseInt(searchParams?.page as string) || 1;
+    const itemsPerPage = 10;
+
     const supabase = await createClient()
 
     // Fetch server profile
@@ -19,28 +28,25 @@ export default async function ServerDetailPage(props: { params: Promise<{ id: st
         notFound()
     }
 
-    // Fetch attendance history joined with mass details
-    const { data: attendanceHistory, error } = await supabase
+    // Fetch minimal attendance history for stats (prevents pulling heavy data for past records)
+    const { data: allStats, error: statsError } = await supabase
         .from('attendance')
         .select(`
             id,
             status,
-            masses:mass_id (
-                id,
-                title,
+            masses!inner(
                 date,
-                start_time,
-                type
+                start_time
             )
         `)
         .eq('server_id', params.id)
 
-    if (error) {
-        console.error('Error fetching attendance history:', error)
+    if (statsError) {
+        console.error('Error fetching attendance stats:', statsError)
     }
 
-    // Sort by mass date manually
-    attendanceHistory?.sort((a: any, b: any) => {
+    // Sort by mass date manually for streak and historical calculations
+    allStats?.sort((a: any, b: any) => {
         const massA = Array.isArray(a.masses) ? a.masses[0] : a.masses;
         const massB = Array.isArray(b.masses) ? b.masses[0] : b.masses;
         const dateA = massA ? new Date(`${massA.date} ${massA.start_time}`).getTime() : 0;
@@ -48,12 +54,33 @@ export default async function ServerDetailPage(props: { params: Promise<{ id: st
         return dateB - dateA;
     });
 
+    // Fetch paginated history for exactly the 10 records we want to display
+    const { data: paginatedHistory, error: historyError } = await supabase
+        .from('masses')
+        .select(`
+            id,
+            title,
+            date,
+            start_time,
+            type,
+            attendance!inner(id, status)
+        `)
+        .eq('attendance.server_id', params.id)
+        .order('date', { ascending: false })
+        .order('start_time', { ascending: false })
+        .range((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage - 1)
+        
+    if (historyError) {
+        console.error('Error fetching paginated history:', historyError)
+    }
+
     // Calculate Stats
-    const totalMasses = attendanceHistory?.length || 0
-    const serviceCount = attendanceHistory?.filter((a: any) => a.status === 'service').length || 0
-    const presentCount = attendanceHistory?.filter((a: any) => a.status === 'present').length || 0
-    const lateCount = attendanceHistory?.filter((a: any) => a.status === 'late').length || 0
-    const excusedCount = attendanceHistory?.filter((a: any) => a.status === 'excused').length || 0
+    const totalMasses = allStats?.length || 0
+    const totalPages = Math.ceil(totalMasses / itemsPerPage)
+    const serviceCount = allStats?.filter((a: any) => a.status === 'service').length || 0
+    const presentCount = allStats?.filter((a: any) => a.status === 'present').length || 0
+    const lateCount = allStats?.filter((a: any) => a.status === 'late').length || 0
+    const excusedCount = allStats?.filter((a: any) => a.status === 'excused').length || 0
     
     // Attendance Rate Logic: (Services + Presents + (Lates * 0.7)) / Total
     const attendanceRate = totalMasses > 0 
@@ -62,8 +89,8 @@ export default async function ServerDetailPage(props: { params: Promise<{ id: st
 
     // Streak Logic: Find consecutive 'present' statuses from the beginning of the list
     let currentStreak = 0
-    if (attendanceHistory) {
-        for (const record of attendanceHistory) {
+    if (allStats) {
+        for (const record of allStats) {
             if (record.status === 'service' || record.status === 'present') {
                 currentStreak++
             } else if (record.status !== 'excused') { // Excused doesn't break steak? 
@@ -196,13 +223,13 @@ export default async function ServerDetailPage(props: { params: Promise<{ id: st
                         </div>
                     </CardHeader>
                     <CardContent className="p-0">
-                        {attendanceHistory && attendanceHistory.length > 0 ? (
+                        {paginatedHistory && paginatedHistory.length > 0 ? (
                             <div className="divide-y divide-border/20">
-                                {attendanceHistory.map((record: any) => {
-                                    // Handle cases where masses might be an array or an object
-                                    const mass = Array.isArray(record.masses) ? record.masses[0] : record.masses;
+                                {paginatedHistory.map((mass: any) => {
+                                    // Extract the joined attendance record
+                                    const record = Array.isArray(mass.attendance) ? mass.attendance[0] : mass.attendance;
                                     
-                                    if (!mass) return null;
+                                    if (!record) return null;
 
                                     return (
                                         <div key={record.id} className="p-4 md:p-6 flex items-center justify-between hover:bg-secondary/30 transition-colors group">
@@ -239,8 +266,18 @@ export default async function ServerDetailPage(props: { params: Promise<{ id: st
                                 <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-secondary mb-4">
                                     <Calendar className="w-6 h-6 text-muted-foreground/40" />
                                 </div>
-                                <h4 className="font-medium text-foreground">No attendance records</h4>
-                                <p className="text-sm text-muted-foreground mt-1 max-w-[240px] mx-auto">This server hasn't been marked in any services yet.</p>
+                                <h4 className="font-medium text-foreground">No attendance records found</h4>
+                                <p className="text-sm text-muted-foreground mt-1 max-w-[240px] mx-auto">This server hasn't been marked or you reached an empty page.</p>
+                            </div>
+                        )}
+                        
+                        {totalPages > 1 && (
+                            <div className="p-4 border-t border-border/50">
+                                <Pagination 
+                                    currentPage={currentPage}
+                                    totalPages={totalPages}
+                                    basePath={`/servers/${server.id}`}
+                                />
                             </div>
                         )}
                     </CardContent>

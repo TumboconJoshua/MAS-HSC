@@ -9,10 +9,12 @@ import {
     Settings2,
     Package,
     ArrowUpRight,
-    MoreVertical,
     CheckCircle2
 } from 'lucide-react'
 import Link from 'next/link'
+import { DeleteEquipmentButton } from './DeleteEquipmentButton'
+import { UpdateStockModule } from './UpdateStockModule'
+import { formatDistanceToNow } from 'date-fns'
 
 interface Equipment {
     id: string
@@ -21,6 +23,8 @@ interface Equipment {
     quantity: number
     condition: string
     notes: string | null
+    server_id: string | null
+    updated_at: string | null
 }
 
 export default async function EquipmentPage() {
@@ -31,6 +35,11 @@ export default async function EquipmentPage() {
         .select('*')
         .order('name', { ascending: true }) as { data: Equipment[] | null }
 
+    const { data: servers } = await supabase
+        .from('servers')
+        .select('id, first_name, last_name')
+        .order('first_name', { ascending: true })
+
     return (
         <div className="space-y-8 pb-12">
             <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
@@ -39,14 +48,18 @@ export default async function EquipmentPage() {
                     <p className="text-muted-foreground mt-1 text-sm md:text-base">Manage the ministry's inventory, from albs and liturgical objects.</p>
                 </div>
                 <div className="flex items-center gap-3 w-full sm:w-auto">
-                    <Button variant="outline" className="flex-1 sm:flex-none shadow-sm h-10">
-                        <History className="w-4 h-4 mr-2" />
-                        Audit
-                    </Button>
-                    <Button variant="accent" className="flex-1 sm:flex-none shadow-lg shadow-accent/20 px-6 h-10">
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Item
-                    </Button>
+                    <Link href="/equipment/audit" className="flex-1 sm:flex-none">
+                        <Button variant="outline" className="w-full shadow-sm h-10 hover:bg-accent hover:text-accent-foreground border-border transition-colors">
+                            <History className="w-4 h-4 mr-2" />
+                            Perform Audit
+                        </Button>
+                    </Link>
+                    <Link href="/equipment/new" className="flex-1 sm:flex-none">
+                        <Button variant="accent" className="w-full shadow-lg shadow-accent/20 px-6 h-10">
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add Item
+                        </Button>
+                    </Link>
                 </div>
             </header>
 
@@ -54,47 +67,51 @@ export default async function EquipmentPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard
                     title="Total Inventory"
-                    value="128"
+                    value={equipment?.length || 0}
                     description="Items across all categories"
                     icon={Package}
                     color="text-primary"
                 />
                 <StatCard
                     title="Good Condition"
-                    value="114"
+                    value={equipment?.filter(i => i.condition === 'good').length || 0}
                     description="Ready for liturgical use"
                     icon={ShieldCheck}
                     color="text-green-500"
                 />
                 <StatCard
                     title="Maintenance"
-                    value="9"
+                    value={equipment?.filter(i => i.condition === 'fair' || i.condition === 'damaged').length || 0}
                     description="Requires cleaning/repair"
                     icon={Settings2}
                     color="text-accent"
                 />
                 <StatCard
                     title="Alerts"
-                    value="5"
-                    description="Missing or damaged items"
+                    value={equipment?.filter(i => i.condition === 'lost').length || 0}
+                    description="Missing items"
                     icon={AlertTriangle}
                     color="text-red-500"
                 />
             </div>
 
             {/* Inventory Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {equipment && equipment.length > 0 ? (
                     equipment.map((item) => (
                         <Card key={item.id} className="group border-none shadow-md hover:shadow-xl transition-all duration-300 bg-card/60 backdrop-blur-sm overflow-hidden">
                             <CardHeader className="flex flex-row items-start justify-between pb-3">
                                 <div>
                                     <h3 className="font-bold text-lg leading-tight group-hover:text-accent transition-colors">{item.name}</h3>
-                                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">{item.category}</p>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{item.category}</p>
+                                        <span className="text-border mx-1">•</span>
+                                        <p className="text-[10px] text-muted-foreground/50 tracking-wide">
+                                            {item.updated_at ? `Updated ${formatDistanceToNow(new Date(item.updated_at), { addSuffix: true })}` : ''}
+                                        </p>
+                                    </div>
                                 </div>
-                                <Button variant="ghost" size="icon" className="text-muted-foreground">
-                                    <MoreVertical className="w-4 h-4" />
-                                </Button>
+                                <DeleteEquipmentButton id={item.id} itemName={item.name} />
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="flex items-center justify-between">
@@ -105,15 +122,12 @@ export default async function EquipmentPage() {
                                     <ConditionBadge condition={item.condition} />
                                 </div>
 
-                                <div className="pt-4 flex gap-2">
-                                    <Button variant="secondary" size="sm" className="flex-1 rounded-xl text-xs font-bold">
-                                        Update Stock
-                                    </Button>
-                                    <Button variant="outline" size="sm" className="flex-1 rounded-xl text-xs font-bold border-accent/20 hover:bg-accent/10 hover:text-accent">
-                                        Assign
-                                        <ArrowUpRight className="w-3 h-3 ml-1" />
-                                    </Button>
-                                </div>
+                                <UpdateStockModule 
+                                    id={item.id} 
+                                    initialQuantity={item.quantity} 
+                                    initialServerId={item.server_id} 
+                                    servers={servers || []} 
+                                />
                             </CardContent>
                         </Card>
                     ))
@@ -127,9 +141,11 @@ export default async function EquipmentPage() {
                             <p className="text-muted-foreground max-w-xs mt-2">
                                 Start tracking albs, cinctures, and liturgical objects.
                             </p>
-                            <Button variant="accent" className="mt-6">
-                                Create First Item
-                            </Button>
+                            <Link href="/equipment/new">
+                                <Button variant="accent" className="mt-6">
+                                    Create First Item
+                                </Button>
+                            </Link>
                         </CardContent>
                     </Card>
                 )}

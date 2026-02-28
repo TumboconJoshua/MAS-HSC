@@ -14,7 +14,7 @@ import {
     Trash2
 } from 'lucide-react'
 import Link from 'next/link'
-import { deleteMass } from './actions'
+import { DeleteMassButton } from './DeleteMassButton'
 
 interface Mass {
     id: string
@@ -32,9 +32,30 @@ export default async function AttendancePage() {
         .from('masses')
         .select(`
             *,
-            attendance:attendance(count)
+            attendance:attendance(status)
         `)
         .order('date', { ascending: false }) as any
+
+    // Calculate Analytics
+    const allAttendance = masses?.flatMap((m: any) => m.attendance) || []
+    const totalRecords = allAttendance.length
+    const presentRecords = allAttendance.filter((a: any) => ['present', 'service', 'late'].includes(a.status)).length
+    const attendanceRate = totalRecords > 0 ? Math.round((presentRecords / totalRecords) * 100) : 0
+
+    // Get servers records for "Perfect Attendance" calculation
+    const { data: servers } = await supabase
+        .from('servers')
+        .select(`
+            id,
+            attendance:attendance(status)
+        `) as any
+
+    const perfectAttendanceCount = servers?.filter((s: any) => {
+        const total = s.attendance?.length || 0
+        if (total === 0) return false
+        const present = s.attendance.filter((a: any) => ['present', 'service', 'late'].includes(a.status)).length
+        return present === total
+    }).length || 0
 
     return (
         <div className="space-y-8 pb-12">
@@ -55,20 +76,20 @@ export default async function AttendancePage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <Card className="border-none shadow-md bg-card/60 backdrop-blur-sm">
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Monthly Average</CardTitle>
+                        <CardTitle className="text-sm font-medium text-muted-foreground">Overall Attendance</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-3xl font-bold text-accent">92%</div>
-                        <p className="text-xs text-muted-foreground mt-1">+2% from last month</p>
+                        <div className="text-3xl font-bold text-accent">{attendanceRate}%</div>
+                        <p className="text-xs text-muted-foreground mt-1">Average rate across all masses</p>
                     </CardContent>
                 </Card>
                 <Card className="border-none shadow-md bg-card/60 backdrop-blur-sm">
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Points Earned</CardTitle>
+                        <CardTitle className="text-sm font-medium text-muted-foreground">Total Participations</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-3xl font-bold">1,240</div>
-                        <p className="text-xs text-muted-foreground mt-1">Total ministry points</p>
+                        <div className="text-3xl font-bold">{presentRecords}</div>
+                        <p className="text-xs text-muted-foreground mt-1">Total server appearances</p>
                     </CardContent>
                 </Card>
                 <Card className="border-none shadow-md bg-card/60 backdrop-blur-sm">
@@ -76,8 +97,8 @@ export default async function AttendancePage() {
                         <CardTitle className="text-sm font-medium text-muted-foreground">Perfect Attendance</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-3xl font-bold text-green-500">12</div>
-                        <p className="text-xs text-muted-foreground mt-1">Servers with 100% rate</p>
+                        <div className="text-3xl font-bold text-green-500">{perfectAttendanceCount}</div>
+                        <p className="text-xs text-muted-foreground mt-1">Servers with 100% participation</p>
                     </CardContent>
                 </Card>
             </div>
@@ -142,11 +163,9 @@ export default async function AttendancePage() {
                                                 {mass.attendance?.[0]?.count > 0 ? 'Edit' : 'Mark'}
                                             </Button>
                                         </Link>
-                                        <form action={deleteMass.bind(null, mass.id)} className="hidden md:block">
-                                            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-red-500 rounded-xl">
-                                                <Trash2 className="w-4 h-4" />
-                                            </Button>
-                                        </form>
+                                        <div className="hidden md:block">
+                                            <DeleteMassButton massId={mass.id} />
+                                        </div>
                                     </div>
                                 </div>
                             ))

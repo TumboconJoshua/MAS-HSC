@@ -1,16 +1,35 @@
-'use server'
+'use client'
 
+import { useState } from 'react'
 import { createMass } from '../actions'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Calendar, Clock, MapPin, Type, ChevronLeft, AlertCircle } from 'lucide-react'
+import { Calendar, Clock, MapPin, Type, ChevronLeft, Loader2 } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { toast } from 'react-hot-toast'
 
-export default async function NewMassPage(props: {
-    searchParams: Promise<{ error?: string }>
-}) {
-    const searchParams = await props.searchParams;
-    
+export default function NewMassPage() {
+    const router = useRouter()
+    const [isSubmitting, setIsSubmitting] = useState(false)
+
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault()
+        setIsSubmitting(true)
+        
+        const formData = new FormData(e.currentTarget)
+        const result = await createMass(formData)
+        
+        if (result.success) {
+            toast.success('Mass scheduled successfully!')
+            router.push('/attendance')
+            router.refresh()
+        } else {
+            toast.error(result.error || 'Failed to schedule mass. Please try again.')
+            setIsSubmitting(false)
+        }
+    }
+
     return (
         <div className="max-w-3xl mx-auto space-y-8">
             <Link href="/attendance">
@@ -31,13 +50,7 @@ export default async function NewMassPage(props: {
                     <CardDescription>Enter the basic details of the mass or service.</CardDescription>
                 </CardHeader>
                 <CardContent className="pt-8">
-                    {searchParams.error && (
-                        <div className="mb-6 flex items-center gap-3 p-4 text-sm text-red-600 bg-red-50 dark:bg-red-950/20 rounded-2xl border border-red-100 dark:border-red-900/30 animate-in fade-in zoom-in duration-300">
-                            <AlertCircle className="w-4 h-4 shrink-0" />
-                            <p>Failed to schedule mass. Please try again.</p>
-                        </div>
-                    )}
-                    <form action={createMass} className="space-y-6">
+                    <form onSubmit={handleSubmit} className="space-y-6">
                         <div className="space-y-2">
                             <label htmlFor="title" className="text-sm font-semibold ml-1 text-foreground/80 flex items-center gap-2">
                                 <Type className="w-4 h-4 text-accent" />
@@ -116,8 +129,15 @@ export default async function NewMassPage(props: {
                             <Link href="/attendance">
                                 <Button variant="ghost" type="button">Cancel</Button>
                             </Link>
-                            <Button variant="accent" type="submit" className="shadow-lg shadow-accent/20 px-8">
-                                Schedule Mass
+                            <Button variant="accent" type="submit" disabled={isSubmitting} className="shadow-lg shadow-accent/20 px-8">
+                                {isSubmitting ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                        Scheduling...
+                                    </>
+                                ) : (
+                                    'Schedule Mass'
+                                )}
                             </Button>
                         </div>
                     </form>

@@ -55,12 +55,12 @@ export async function updateServer(id: string, formData: FormData) {
 
     if (error) {
         console.error('Error updating server:', error)
-        redirect(`/servers/${id}?error=true`)
+        return { error: 'Failed to update server profile' }
     }
 
     revalidatePath(`/servers/${id}`)
     revalidatePath('/servers')
-    redirect(`/servers/${id}`)
+    return { success: true }
 }
 
 async function uploadAvatar(supabase: any, file: File) {

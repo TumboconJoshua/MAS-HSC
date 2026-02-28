@@ -19,11 +19,11 @@ export async function createMass(formData: FormData) {
 
     if (error) {
         console.error('Error creating mass:', error)
-        redirect('/attendance/new?error=true')
+        return { error: 'Failed to schedule mass' }
     }
 
     revalidatePath('/attendance')
-    redirect('/attendance')
+    return { success: true }
 }
 
 export async function recordAttendance(massId: string, attendanceData: { server_id: string, status: string }[]) {
@@ -60,11 +60,10 @@ export async function deleteMass(id: string) {
 
     if (error) {
         console.error('Error deleting mass:', error)
-        // We can redirect with an error message in the URL
-        redirect(`/attendance?error=delete_failed`)
+        return { error: 'Failed to delete mass schedule' }
     }
 
     revalidatePath('/attendance')
-    redirect('/attendance')
+    return { success: true }
 }
 
