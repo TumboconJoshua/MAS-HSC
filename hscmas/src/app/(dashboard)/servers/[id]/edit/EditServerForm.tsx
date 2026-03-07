@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { updateServer } from '../../actions'
 import { toast } from 'react-hot-toast'
 import { Button } from '@/components/ui/button'
-import { Camera, Plus, User, Phone, ShieldCheck, Users, Loader2 } from 'lucide-react'
+import { Camera, Plus, User, Phone, ShieldCheck, Users, Loader2, Shield } from 'lucide-react'
 import Link from 'next/link'
 
 export function EditServerForm({ server }: { server: any }) {
@@ -179,23 +179,46 @@ export function EditServerForm({ server }: { server: any }) {
                 </div>
             </div>
 
-            <div className="space-y-2">
-                <label htmlFor="group_name" className="text-sm font-semibold ml-1 text-foreground/80 flex items-center gap-2">
-                    <Users className="w-4 h-4 text-accent" />
-                    Assignment Group
-                </label>
-                <select
-                    id="group_name"
-                    name="group_name"
-                    defaultValue={server.group_name}
-                    className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all appearance-none cursor-pointer"
-                >
-                    <option value="">Select a Group</option>
-                    <option value="Knights of the Altar">Knights of the Altar</option>
-                    <option value="Junior Servers">Junior Servers</option>
-                    <option value="Senior Servers">Senior Servers</option>
-                    <option value="Observer">Observer</option>
-                </select>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                    <label htmlFor="group_name" className="text-sm font-semibold ml-1 text-foreground/80 flex items-center gap-2">
+                        <Users className="w-4 h-4 text-accent" />
+                        Assignment Group
+                    </label>
+                    <select
+                        id="group_name"
+                        name="group_name"
+                        defaultValue={server.group_name}
+                        className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all appearance-none cursor-pointer"
+                    >
+                        <option value="">Select a Group</option>
+                        <option value="Knights of the Altar">Knights of the Altar</option>
+                        <option value="Junior Servers">Junior Servers</option>
+                        <option value="Senior Servers">Senior Servers</option>
+                        <option value="Observer">Observer</option>
+                    </select>
+                </div>
+                <div className="space-y-2">
+                    <label htmlFor="officer_role" className="text-sm font-semibold ml-1 text-foreground/80 flex items-center gap-2">
+                        <Shield className="w-4 h-4 text-accent" />
+                        Officer Role (Optional)
+                    </label>
+                    <select
+                        id="officer_role"
+                        name="officer_role"
+                        defaultValue={server.officer_role || ''}
+                        className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all appearance-none cursor-pointer text-sm"
+                    >
+                        <option value="">No Officer Role</option>
+                        <option value="Adviser">Adviser</option>
+                        <option value="Co-Adviser">Co-Adviser</option>
+                        <option value="Coordinator">Coordinator</option>
+                        <option value="President">President</option>
+                        <option value="Trainer/OIC">Trainer/OIC</option>
+                        <option value="Secretary">Secretary</option>
+                        <option value="Treasurer">Treasurer</option>
+                    </select>
+                </div>
             </div>
 
             <div className="pt-6 flex items-center justify-end gap-4 border-t border-border/50">

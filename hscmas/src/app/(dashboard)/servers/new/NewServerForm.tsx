@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createServer } from '../actions'
 import { Button } from '@/components/ui/button'
-import { User, Phone, Users, Camera, Plus, Loader2 } from 'lucide-react'
+import { User, Phone, Users, Camera, Plus, Loader2, Shield } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'react-hot-toast'
 
@@ -173,13 +173,36 @@ export function NewServerForm() {
                     <select
                         id="group_name"
                         name="group_name"
-                        className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all appearance-none cursor-pointer"
+                        className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all appearance-none cursor-pointer text-sm"
                     >
                         <option value="">Select a Group</option>
                         <option value="Knights of the Altar">Knights of the Altar</option>
                         <option value="Junior Servers">Junior Servers</option>
                         <option value="Senior Servers">Senior Servers</option>
                         <option value="Observer">Observer</option>
+                    </select>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                    <label htmlFor="officer_role" className="text-sm font-semibold ml-1 text-foreground/80 flex items-center gap-2">
+                        <Shield className="w-4 h-4 text-accent" />
+                        Officer Role (Optional)
+                    </label>
+                    <select
+                        id="officer_role"
+                        name="officer_role"
+                        className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all appearance-none cursor-pointer text-sm"
+                    >
+                        <option value="">No Officer Role</option>
+                        <option value="Adviser">Adviser</option>
+                        <option value="Co-Adviser">Co-Adviser</option>
+                        <option value="Coordinator">Coordinator</option>
+                        <option value="President">President</option>
+                        <option value="Trainer/OIC">Trainer/OIC</option>
+                        <option value="Secretary">Secretary</option>
+                        <option value="Treasurer">Treasurer</option>
                     </select>
                 </div>
             </div>

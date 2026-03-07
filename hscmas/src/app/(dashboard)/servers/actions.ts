@@ -22,6 +22,7 @@ export async function createServer(formData: FormData) {
         birthday: formData.get('birthday') as string,
         date_joined: formData.get('date_joined') as string || new Date().toISOString().split('T')[0],
         avatar_url: avatar_url,
+        officer_role: formData.get('officer_role') as string || null,
         status: 'active'
     }
 
@@ -47,6 +48,7 @@ export async function updateServer(id: string, formData: FormData) {
         sex: formData.get('sex') as string,
         birthday: formData.get('birthday') as string,
         date_joined: formData.get('date_joined') as string,
+        officer_role: formData.get('officer_role') as string || null,
         status: formData.get('status') as string,
     }
 
@@ -85,13 +87,16 @@ export async function deleteServer(id: string) {
 }
 
 async function uploadAvatar(supabase: any, file: File) {
-    const fileExt = file.name.split('.').pop()
+    const fileExt = file.name.includes('.') ? file.name.split('.').pop() : (file.type.split('/')[1] || 'jpeg')
     const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`
     const filePath = `${fileName}`
 
     const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(filePath, file)
+        .upload(filePath, file, {
+            contentType: file.type || 'image/jpeg',
+            upsert: false
+        })
 
     if (uploadError) {
         console.error('Error uploading avatar:', uploadError)

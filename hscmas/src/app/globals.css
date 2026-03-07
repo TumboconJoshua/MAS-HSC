@@ -24,20 +24,37 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
 
-  --font-sans: var(--font-outfit), var(--font-geist-sans), ui-sans-serif, system-ui;
+  --font-sans:
+    var(--font-outfit), var(--font-geist-sans), ui-sans-serif, system-ui;
 
   --animate-in: animate-in 0.2s ease-out;
   --animate-out: animate-out 0.2s ease-in;
   --animate-fade-in: fade-in 0.3s ease-out;
+  --animate-shimmer: shimmer 2s infinite linear;
+  --animate-bounce: bounce 0.6s infinite alternate;
 }
 
 @keyframes fade-in {
   from {
     opacity: 0;
   }
-
   to {
     opacity: 1;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}
+
+@keyframes bounce {
+  to {
+    transform: translateY(-4px);
   }
 }
 
@@ -90,7 +107,9 @@
 
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings:
+      "rlig" 1,
+      "calt" 1;
   }
 }
 

@@ -26,7 +26,7 @@ export async function createMass(formData: FormData) {
     return { success: true }
 }
 
-export async function recordAttendance(massId: string, attendanceData: { server_id: string, status: string }[]) {
+export async function recordAttendance(massId: string, attendanceData: { server_id: string, status: string, role?: string | null }[]) {
     const supabase = await createClient()
 
     // Delete existing attendance for this mass to avoid duplicates (assuming we want to re-save the whole list)
@@ -35,7 +35,8 @@ export async function recordAttendance(massId: string, attendanceData: { server_
     const data = attendanceData.map(item => ({
         mass_id: massId,
         server_id: item.server_id,
-        status: item.status
+        status: item.status,
+        role: item.role || null
     }))
 
     const { error } = await supabase.from('attendance').insert(data)

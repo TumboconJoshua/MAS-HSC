@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { CheckCircle2, XCircle, Clock, AlertCircle, Loader2, ShieldCheck } from 'lucide-react'
+import { CheckCircle2, XCircle, Clock, AlertCircle, Loader2, ShieldCheck, ChevronDown } from 'lucide-react'
 import { recordAttendance } from '../../actions'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -19,21 +19,37 @@ interface Server {
 interface AttendanceFormProps {
     massId: string
     servers: Server[]
-    existingAttendance: { server_id: string; status: string }[]
+    existingAttendance: { server_id: string; status: string; role: string | null }[]
 }
 
 type AttendanceStatus = 'service' | 'present' | 'absent' | 'late' | 'excused'
+
+const SERVICE_ROLES = [
+    { value: '', label: 'No Role Assigned' },
+    { value: 'Thurifer', label: 'Thurifer' },
+    { value: 'Incense Boat', label: 'Incense Boat' },
+    { value: 'Cross', label: 'Cross' },
+    { value: 'Candle', label: 'Candle' },
+    { value: 'OD/Beller', label: 'OD/Beller' },
+]
 
 export function AttendanceForm({ massId, servers, existingAttendance }: AttendanceFormProps) {
     const router = useRouter()
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [attendance, setAttendance] = useState<Record<string, AttendanceStatus>>(() => {
         const initial: Record<string, AttendanceStatus> = {}
-        // Pre-fill with existing or default to 'absent' (or nothing?)
-        // Let's default to nothing so user has to mark them, or maybe 'absent' is safer for an admin system
         servers.forEach(server => {
             const existing = existingAttendance.find(a => a.server_id === server.id)
             initial[server.id] = (existing?.status as AttendanceStatus) || 'absent'
+        })
+        return initial
+    })
+
+    const [roles, setRoles] = useState<Record<string, string>>(() => {
+        const initial: Record<string, string> = {}
+        servers.forEach(server => {
+            const existing = existingAttendance.find(a => a.server_id === server.id)
+            initial[server.id] = existing?.role || ''
         })
         return initial
     })
@@ -43,6 +59,20 @@ export function AttendanceForm({ massId, servers, existingAttendance }: Attendan
             ...prev,
             [serverId]: status
         }))
+        // Clear role if status is not service
+        if (status !== 'service') {
+            setRoles(prev => ({
+                ...prev,
+                [serverId]: ''
+            }))
+        }
+    }
+
+    const setRole = (serverId: string, role: string) => {
+        setRoles(prev => ({
+            ...prev,
+            [serverId]: role
+        }))
     }
 
     const markAll = (status: AttendanceStatus) => {
@@ -51,13 +81,22 @@ export function AttendanceForm({ massId, servers, existingAttendance }: Attendan
             updated[server.id] = status
         })
         setAttendance(updated)
+        // Clear all roles if not service
+        if (status !== 'service') {
+            const clearedRoles = { ...roles }
+            servers.forEach(server => {
+                clearedRoles[server.id] = ''
+            })
+            setRoles(clearedRoles)
+        }
     }
 
     const handleSave = async () => {
         setIsSubmitting(true)
         const data = Object.entries(attendance).map(([serverId, status]) => ({
             server_id: serverId,
-            status: status
+            status: status,
+            role: status === 'service' ? (roles[serverId] || null) : null
         }))
 
         const result = await recordAttendance(massId, data)
@@ -106,54 +145,84 @@ export function AttendanceForm({ massId, servers, existingAttendance }: Attendan
                 <CardContent className="p-0">
                     <div className="divide-y divide-border/20">
                         {servers.map((server) => (
-                            <div key={server.id} className="p-4 md:p-6 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-secondary/30 transition-colors group gap-4">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center font-bold text-accent border border-border shrink-0">
-                                        {server.first_name[0]}{server.last_name[0]}
+                            <div key={server.id} className="p-4 md:p-6 hover:bg-secondary/30 transition-colors group">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center font-bold text-accent border border-border shrink-0">
+                                            {server.first_name[0]}{server.last_name[0]}
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-base">{server.first_name} {server.last_name}</h4>
+                                            <p className="text-xs text-muted-foreground">{server.group_name || 'Altar Server'}</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <h4 className="font-bold text-base">{server.first_name} {server.last_name}</h4>
-                                        <p className="text-xs text-muted-foreground">{server.group_name || 'Altar Server'}</p>
+                                    
+                                    <div className="flex items-center gap-1 bg-background/50 p-1 rounded-xl border border-border/50 self-start sm:self-center">
+                                        <StatusButton 
+                                            active={attendance[server.id] === 'service'} 
+                                            onClick={() => toggleStatus(server.id, 'service')}
+                                            color="purple"
+                                            icon={ShieldCheck}
+                                            label="Service"
+                                        />
+                                        <StatusButton 
+                                            active={attendance[server.id] === 'present'} 
+                                            onClick={() => toggleStatus(server.id, 'present')}
+                                            color="green"
+                                            icon={CheckCircle2}
+                                            label="Present"
+                                        />
+                                        <StatusButton 
+                                            active={attendance[server.id] === 'late'} 
+                                            onClick={() => toggleStatus(server.id, 'late')}
+                                            color="yellow"
+                                            icon={Clock}
+                                            label="Late"
+                                        />
+                                        <StatusButton 
+                                            active={attendance[server.id] === 'excused'} 
+                                            onClick={() => toggleStatus(server.id, 'excused')}
+                                            color="blue"
+                                            icon={AlertCircle}
+                                            label="Excused"
+                                        />
+                                        <StatusButton 
+                                            active={attendance[server.id] === 'absent'} 
+                                            onClick={() => toggleStatus(server.id, 'absent')}
+                                            color="red"
+                                            icon={XCircle}
+                                            label="Absent"
+                                        />
                                     </div>
                                 </div>
-                                
-                                <div className="flex items-center gap-1 bg-background/50 p-1 rounded-xl border border-border/50 self-start sm:self-center">
-                                    <StatusButton 
-                                        active={attendance[server.id] === 'service'} 
-                                        onClick={() => toggleStatus(server.id, 'service')}
-                                        color="purple"
-                                        icon={ShieldCheck}
-                                        label="Service"
-                                    />
-                                    <StatusButton 
-                                        active={attendance[server.id] === 'present'} 
-                                        onClick={() => toggleStatus(server.id, 'present')}
-                                        color="green"
-                                        icon={CheckCircle2}
-                                        label="Present"
-                                    />
-                                    <StatusButton 
-                                        active={attendance[server.id] === 'late'} 
-                                        onClick={() => toggleStatus(server.id, 'late')}
-                                        color="yellow"
-                                        icon={Clock}
-                                        label="Late"
-                                    />
-                                    <StatusButton 
-                                        active={attendance[server.id] === 'excused'} 
-                                        onClick={() => toggleStatus(server.id, 'excused')}
-                                        color="blue"
-                                        icon={AlertCircle}
-                                        label="Excused"
-                                    />
-                                    <StatusButton 
-                                        active={attendance[server.id] === 'absent'} 
-                                        onClick={() => toggleStatus(server.id, 'absent')}
-                                        color="red"
-                                        icon={XCircle}
-                                        label="Absent"
-                                    />
-                                </div>
+
+                                {/* Role Assignment - only visible when status is 'service' */}
+                                {attendance[server.id] === 'service' && (
+                                    <div className="mt-3 ml-14 animate-in fade-in slide-in-from-top-2 duration-300">
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">Assigned Role:</span>
+                                            <div className="relative">
+                                                <select
+                                                    value={roles[server.id] || ''}
+                                                    onChange={(e) => setRole(server.id, e.target.value)}
+                                                    className={cn(
+                                                        "appearance-none pl-3 pr-8 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-accent/50",
+                                                        roles[server.id]
+                                                            ? "bg-indigo-500/10 border-indigo-500/30 text-indigo-600 dark:text-indigo-400"
+                                                            : "bg-background border-border text-muted-foreground"
+                                                    )}
+                                                >
+                                                    {SERVICE_ROLES.map(role => (
+                                                        <option key={role.value} value={role.value}>
+                                                            {role.label}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>

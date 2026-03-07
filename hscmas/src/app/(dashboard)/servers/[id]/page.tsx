@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { 
-    User, Phone, Users, ChevronLeft, AlertCircle, ShieldCheck, Camera, Plus, Calendar, CheckCircle2, XCircle, Clock, TrendingUp, History
+    User, Phone, Users, ChevronLeft, AlertCircle, ShieldCheck, Camera, Plus, Calendar, CheckCircle2, XCircle, Clock, TrendingUp, History, Shield
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -140,6 +140,15 @@ export default async function ServerDetailPage(props: {
                                 <Users className="w-4 h-4" />
                                 {server.group_name || 'Altar Server'}
                             </p>
+                            {server.officer_role && (
+                                <>
+                                    <span className="text-muted-foreground/30 hidden sm:inline">•</span>
+                                    <p className="text-indigo-500 font-bold flex items-center gap-2">
+                                        <Shield className="w-4 h-4" />
+                                        {server.officer_role}
+                                    </p>
+                                </>
+                            )}
                             <span className="text-muted-foreground/30 hidden sm:inline">•</span>
                             <p className="text-accent font-bold flex items-center gap-2 text-sm">
                                 <TrendingUp className="w-4 h-4" />

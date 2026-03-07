@@ -12,7 +12,8 @@ import {
     Activity,
     Clock,
     Trophy,
-    Star
+    Star,
+    Shield
 } from 'lucide-react'
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
@@ -121,6 +122,30 @@ export default async function DashboardPage() {
             time: new Date(m.created_at)
         })) || [])
     ].sort((a, b) => b.time.getTime() - a.time.getTime()).slice(0, 5)
+
+    // 7. Fetch Officers for Hierarchy Tree
+    const { data: officersData } = await supabase
+        .from('servers')
+        .select('id, first_name, last_name, officer_role, avatar_url')
+        .not('officer_role', 'is', null)
+    
+    // Define exact sorting order
+    const officerOrder = [
+        'Adviser',
+        'Co-Adviser',
+        'Coordinator',
+        'President',
+        'Trainer/OIC',
+        'Secretary',
+        'Treasurer'
+    ]
+
+    const officers = (officersData || []).sort((a, b) => {
+        const indexA = officerOrder.indexOf(a.officer_role)
+        const indexB = officerOrder.indexOf(b.officer_role)
+        // If not found in array, put at the end
+        return (indexA === -1 ? 99 : indexA) - (indexB === -1 ? 99 : indexB)
+    })
 
     return (
         <div className="space-y-10">
@@ -334,6 +359,66 @@ export default async function DashboardPage() {
                     </Card>
                 </div>
             </div>
+
+            {/* 4. Officers Hierarchy Tree */}
+            <div className="pt-12 mt-12 border-t border-border relative">
+                <div className="mb-12 text-center">
+                    <h2 className="text-3xl font-black tracking-tight flex items-center justify-center gap-3">
+                        <Shield className="w-8 h-8 text-accent" />
+                        Our Current Officers
+                    </h2>
+                    <p className="text-muted-foreground mt-2 font-medium tracking-wide uppercase text-sm">Holy Spirit Chapel Ministry of Altar Servers</p>
+                </div>
+                
+                {officers.length > 0 ? (
+                    <div className="relative max-w-5xl mx-auto py-8">
+                        {/* Connecting Lines (Background) */}
+                        <div className="absolute inset-0 pointer-events-none hidden md:block z-0">
+                            {/* Main vertical stem */}
+                            <div className="absolute left-1/2 top-20 bottom-16 w-0.5 bg-accent/20 -translate-x-1/2"></div>
+                            {/* Horizontal branches for Coordinator/President */}
+                            <div className="absolute top-[60%] left-[40%] right-[40%] h-0.5 bg-accent/20"></div>
+                            {/* Horizontal branches for bottom row */}
+                            <div className="absolute bottom-24 left-[20%] right-[20%] h-0.5 bg-accent/20"></div>
+                            <div className="absolute bottom-24 left-[20%] w-0.5 h-12 bg-accent/20"></div>
+                            <div className="absolute bottom-24 right-[20%] w-0.5 h-12 bg-accent/20"></div>
+                        </div>
+
+                        {/* Hierarchy Layout */}
+                        <div className="flex flex-col items-center gap-12 relative z-10">
+                            
+                            {/* Top Level: Advisers */}
+                            <div className="flex flex-col items-center gap-8 w-full">
+                                {officers.filter(o => o.officer_role === 'Adviser').map(officer => (
+                                    <OfficerCard key={officer.id} officer={officer} featured />
+                                ))}
+                                {officers.filter(o => o.officer_role === 'Co-Adviser').map(officer => (
+                                    <OfficerCard key={officer.id} officer={officer} />
+                                ))}
+                            </div>
+
+                            {/* Middle Level: Execs */}
+                            <div className="flex flex-col md:flex-row justify-center items-center gap-6 md:gap-16 w-full mt-2">
+                                {officers.filter(o => ['Coordinator', 'President'].includes(o.officer_role!)).map(officer => (
+                                    <OfficerCard key={officer.id} officer={officer} />
+                                ))}
+                            </div>
+
+                            {/* Bottom Level: Functional */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-2xl mt-2 place-items-center">
+                                {officers.filter(o => ['Trainer/OIC', 'Secretary', 'Treasurer'].includes(o.officer_role!)).map(officer => (
+                                    <OfficerCard key={officer.id} officer={officer} className="w-full max-w-[200px]" />
+                                ))}
+                            </div>
+
+                        </div>
+                    </div>
+                ) : (
+                    <div className="py-12 text-center text-muted-foreground italic border-2 border-dashed border-border rounded-3xl">
+                        No officers are currently appointed. Update server profiles to set their roles.
+                    </div>
+                )}
+            </div>
         </div>
     )
 }
@@ -376,4 +461,46 @@ function ActivityItem({ user, action, target, time }: any) {
 
 function cn(...inputs: any[]) {
     return inputs.filter(Boolean).join(' ')
+}
+
+function OfficerCard({ officer, featured, className }: { officer: any, featured?: boolean, className?: string }) {
+    return (
+        <div className={cn(
+            "flex flex-col items-center p-4 bg-background rounded-3xl border shadow-md hover:shadow-lg transition-all group hover:-translate-y-1 z-20 relative overflow-hidden",
+            featured ? "border-accent/60 shadow-accent/10 sm:w-[190px]" : "border-border hover:border-accent/40 sm:w-[150px]",
+            className
+        )}>
+            {featured && (
+                <div className="absolute inset-0 bg-gradient-to-b from-accent/10 to-transparent pointer-events-none"></div>
+            )}
+            
+            <div className={cn(
+                "rounded-full bg-secondary flex items-center justify-center border-2 border-background group-hover:border-accent/20 transition-colors overflow-hidden mb-2 shadow-sm z-20 relative",
+                featured ? "w-16 h-16" : "w-12 h-12"
+            )}>
+                {officer.avatar_url ? (
+                    <img src={officer.avatar_url} alt="" className="w-full h-full object-cover" />
+                ) : (
+                    <span className={cn("font-black text-accent", featured ? "text-2xl" : "text-xl")}>
+                        {officer.first_name[0]}{officer.last_name[0]}
+                    </span>
+                )}
+            </div>
+
+            <div className="text-center z-10">
+                <h4 className={cn(
+                    "font-bold tracking-tight leading-tight mb-1 group-hover:text-accent transition-colors",
+                    featured ? "text-sm" : "text-xs"
+                )}>
+                    {officer.first_name} {officer.last_name}
+                </h4>
+                <div className={cn(
+                    "inline-flex items-center justify-center px-2 py-0.5 rounded-full border font-bold uppercase",
+                    featured ? "bg-accent text-accent-foreground border-accent text-[9px] tracking-widest" : "bg-accent/10 text-muted-foreground border-accent/20 text-[8px] tracking-wider"
+                )}>
+                    {officer.officer_role}
+                </div>
+            </div>
+        </div>
+    )
 }

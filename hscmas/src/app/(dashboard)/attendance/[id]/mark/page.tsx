@@ -30,7 +30,7 @@ export default async function MarkAttendancePage(props: { params: Promise<{ id: 
     // Fetch existing attendance records for this mass
     const { data: existingAttendance } = await supabase
         .from('attendance')
-        .select('server_id, status')
+        .select('server_id, status, role')
         .eq('mass_id', params.id)
 
     return (

@@ -17,6 +17,7 @@ create table servers (
   birthday date,
   date_joined date default current_date,
   group_name text,
+  officer_role text,
   created_at timestamptz default now()
 );
 
@@ -35,6 +36,7 @@ create table attendance (
   mass_id uuid references masses(id) on delete cascade not null,
   server_id uuid references servers(id) on delete cascade not null,
   status text default 'present' check (status in ('service', 'present', 'absent', 'excused', 'late')),
+  role text default null,
   remarks text,
   created_at timestamptz default now()
 );

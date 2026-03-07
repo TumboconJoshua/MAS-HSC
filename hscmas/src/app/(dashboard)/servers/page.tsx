@@ -24,6 +24,7 @@ interface Server {
     status: string
     date_joined: string
     group_name: string | null
+    officer_role: string | null
     avatar_url: string | null
 }
 
@@ -84,12 +85,19 @@ export default async function ServersPage({
                                         )}
                                     </div>
                                     <div>
-                                        <h3 className="font-bold text-lg leading-tight group-hover:text-accent transition-colors">
+                                        <h3 className="font-bold text-lg leading-tight group-hover:text-accent transition-colors flex items-center gap-2">
                                             {server.first_name} {server.last_name}
                                         </h3>
-                                        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-0.5">
-                                            {server.group_name || 'General Group'}
-                                        </p>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider bg-secondary/50 px-2 py-0.5 rounded-full border border-border/50">
+                                                {server.group_name || 'General Group'}
+                                            </p>
+                                            {server.officer_role && (
+                                                <p className="text-[10px] text-indigo-500 font-bold uppercase tracking-wider bg-indigo-500/10 px-2 py-0.5 rounded-full border border-indigo-500/20">
+                                                    {server.officer_role}
+                                                </p>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                                 <Button variant="ghost" size="icon" className="text-muted-foreground">
