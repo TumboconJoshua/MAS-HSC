@@ -39,13 +39,17 @@ export default async function DashboardPage() {
 
     const upcomingCount = upcomingMasses?.length || 0
 
-    // 3. Fetch Overall Attendance Rate
-    const { data: allAttendance } = await supabase
+    // 3. Fetch Overall Attendance Rate (Last 30 days for relevance and to avoid row limits)
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(now.getDate() - 30)
+    
+    const { data: recentAttendance } = await supabase
         .from('attendance')
         .select('status')
+        .gte('created_at', thirtyDaysAgo.toISOString())
     
-    const totalAttendanceRecords = allAttendance?.length || 0
-    const presentRecords = allAttendance?.filter((a: any) => ['present', 'service', 'late'].includes(a.status)).length || 0
+    const totalAttendanceRecords = recentAttendance?.length || 0
+    const presentRecords = recentAttendance?.filter((a: any) => ['present', 'service', 'late'].includes(a.status)).length || 0
     const attendanceRate = totalAttendanceRecords > 0 ? Math.round((presentRecords / totalAttendanceRecords) * 100) : 0
 
     // 4. Fetch Equipment Alerts (maintenance needed)
@@ -56,24 +60,56 @@ export default async function DashboardPage() {
     
     const alertsCount = equipmentAlerts?.length || 0
 
-    // 5. Fetch Server of the Month (Highest attendance in the current/past month)
+    // 5. Fetch Server of the Month (Highest attendance in the current month based on mass dates)
+    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
+    
     const { data: serverStats } = await supabase
         .from('attendance')
-        .select('server_id, status')
-        .in('status', ['present', 'service', 'late'])
+        .select('server_id, status, masses!inner(date)')
+        .gte('masses.date', firstDayOfMonth)
 
-    const serverAttendanceCounts: Record<string, number> = {}
+    const serverServiceCounts: Record<string, number> = {} // 'service' status
+    const serverPresenceCounts: Record<string, number> = {} // 'service' + 'present' status
+    const serverTotalCounts: Record<string, number> = {} // All records (for rate)
+
     serverStats?.forEach((stat: any) => {
-        serverAttendanceCounts[stat.server_id] = (serverAttendanceCounts[stat.server_id] || 0) + 1
+        const sid = stat.server_id
+        serverTotalCounts[sid] = (serverTotalCounts[sid] || 0) + 1
+        
+        if (stat.status === 'service') {
+            serverServiceCounts[sid] = (serverServiceCounts[sid] || 0) + 1
+            serverPresenceCounts[sid] = (serverPresenceCounts[sid] || 0) + 1
+        } else if (stat.status === 'present') {
+            serverPresenceCounts[sid] = (serverPresenceCounts[sid] || 0) + 1
+        }
     })
 
-    const topServerId = Object.keys(serverAttendanceCounts).reduce((a, b) => 
-        serverAttendanceCounts[a] > serverAttendanceCounts[b] ? a : b, 
-    '')
+    // Sort to find the top server. 
+    // Qualification Criteria: 
+    // 1. Most "Total No. of Service" (service status)
+    // 2. Most "Total Presences" (service + present status)
+    const topServerId = Object.keys(serverTotalCounts).sort((a, b) => {
+        // Primary: Service Count
+        const sA = serverServiceCounts[a] || 0
+        const sB = serverServiceCounts[b] || 0
+        if (sB !== sA) return sB - sA
+        
+        // Secondary: Presence Count (Service + Present)
+        const pA = serverPresenceCounts[a] || 0
+        const pB = serverPresenceCounts[b] || 0
+        return pB - pA
+    })[0] || ''
 
     const { data: topServer } = topServerId 
         ? await supabase.from('servers').select('*').eq('id', topServerId).single()
         : { data: null }
+
+    // Calculate metrics for the top server if exists
+    const topServerServiceCount = topServer ? (serverServiceCounts[topServerId] || 0) : 0
+    const topServerPresenceCount = topServer ? (serverPresenceCounts[topServerId] || 0) : 0
+    const topServerRate = topServer 
+        ? Math.round((topServerPresenceCount / (serverTotalCounts[topServerId] || 1)) * 100)
+        : 0
 
     // 6. Consolidated Activity (Latest 5 actions across system)
     const [
@@ -252,13 +288,19 @@ export default async function DashboardPage() {
 
                             <div className="grid grid-cols-2 gap-3 w-full max-w-[200px]">
                                 <div className="p-3 bg-secondary/50 rounded-2xl border border-border group-hover/award:border-accent/20 transition-colors">
-                                    <div className="text-lg font-black text-accent">{serverAttendanceCounts[topServer.id]}</div>
-                                    <div className="text-[9px] font-bold text-muted-foreground uppercase">Services</div>
+                                    <div className="text-lg font-black text-accent">{topServerServiceCount}</div>
+                                    <div className="text-[9px] font-bold text-muted-foreground uppercase leading-tight">Service<br/>Count</div>
                                 </div>
                                 <div className="p-3 bg-secondary/50 rounded-2xl border border-border group-hover/award:border-accent/20 transition-colors">
-                                    <div className="text-lg font-black text-green-500">100%</div>
-                                    <div className="text-[9px] font-bold text-muted-foreground uppercase">Rate</div>
+                                    <div className="text-lg font-black text-green-500">{topServerPresenceCount}</div>
+                                    <div className="text-[9px] font-bold text-muted-foreground uppercase leading-tight">Total<br/>Presence</div>
                                 </div>
+                            </div>
+
+                            <div className="mt-4 px-4 py-2 bg-accent/5 rounded-full border border-accent/10">
+                                <span className="text-[10px] font-bold text-accent uppercase tracking-widest">
+                                    Attendance Rate: {topServerRate}%
+                                </span>
                             </div>
 
                             <Link href={`/servers/${topServer.id}`} className="mt-8">
