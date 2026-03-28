@@ -107,8 +107,8 @@ export default function NewMassPage() {
                                     className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all appearance-none cursor-pointer"
                                 >
                                     <option value="regular">Regular Mass</option>
-                                    <option value="high_mass">High Mass</option>
                                     <option value="special">Special Occasion</option>
+                                    <option value="event">Liturgical Event</option>
                                 </select>
                             </div>
                             <div className="space-y-2">
