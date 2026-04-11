@@ -47,9 +47,13 @@ export default async function LoginPage() {
 
             <div className="w-full max-w-5xl px-4 sm:px-8 relative z-10 py-12">
                 <div className="text-center mb-10 animate-in fade-in slide-in-from-top-4 duration-1000">
-                    <div className="inline-flex items-center justify-center w-20 h-20 rounded-[2.5rem] bg-gradient-to-br from-accent to-accent/20 p-[1px] mb-8 shadow-2xl shadow-accent/20 group">
-                        <div className="w-full h-full rounded-[2.45rem] bg-background/90 flex items-center justify-center backdrop-blur-sm">
-                            <Church className="w-10 h-10 text-accent group-hover:scale-110 transition-transform duration-500" />
+                    <div className="inline-flex items-center justify-center w-24 h-24 rounded-[2.5rem] bg-gradient-to-br from-accent to-accent/20 p-[1px] mb-8 shadow-2xl shadow-accent/20 group">
+                        <div className="w-full h-full rounded-[2.45rem] bg-background/90 flex items-center justify-center backdrop-blur-sm overflow-hidden p-2">
+                            <img 
+                                src="/images/MINISTRY OF ALTAR SERVER - HSC.png" 
+                                alt="MAS-HSC Logo" 
+                                className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500" 
+                            />
                         </div>
                     </div>
                     <div className="space-y-2">

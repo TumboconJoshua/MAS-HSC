@@ -9,8 +9,12 @@ export default function Loading() {
         <div className="absolute inset-0 bg-accent/20 blur-[40px] rounded-full animate-pulse"></div>
         
         {/* Centered Logo Container */}
-        <div className="relative w-20 h-20 rounded-[2rem] bg-background border border-accent/20 flex items-center justify-center shadow-2xl shadow-accent/10">
-          <Church className="w-10 h-10 text-accent" />
+        <div className="relative w-20 h-20 rounded-[2rem] bg-background border border-accent/20 flex items-center justify-center shadow-2xl shadow-accent/10 overflow-hidden p-2">
+          <img 
+            src="/images/MINISTRY OF ALTAR SERVER - HSC.png" 
+            alt="MAS-HSC Logo" 
+            className="w-full h-full object-contain" 
+          />
           
           {/* Circular Progress Ring */}
           <div className="absolute inset-[-4px] rounded-[2.2rem] border-2 border-transparent border-t-accent/40 animate-spin" style={{ animationDuration: '1.5s' }}></div>

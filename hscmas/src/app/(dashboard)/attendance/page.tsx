@@ -16,6 +16,7 @@ import {
 import Link from 'next/link'
 import { DeleteMassButton } from './DeleteMassButton'
 import { AttendanceFilters } from './AttendanceFilters'
+import { ReportGenerator } from './ReportGenerator'
 import { Pagination } from '@/components/ui/pagination'
 
 interface Mass {
@@ -30,12 +31,15 @@ interface Mass {
 export default async function AttendancePage({
     searchParams,
 }: {
-    searchParams: Promise<{ page?: string; date?: string; search?: string }>
+    searchParams: Promise<{ page?: string; date?: string; search?: string; reportStartMonth?: string; reportEndMonth?: string; reportYear?: string }>
 }) {
     const params = await searchParams
     const page = parseInt(params.page || '1')
     const date = params.date || ''
     const search = params.search || ''
+    const reportStartMonth = params.reportStartMonth ? parseInt(params.reportStartMonth) : null
+    const reportEndMonth = params.reportEndMonth ? parseInt(params.reportEndMonth) : null
+    const reportYear = params.reportYear ? parseInt(params.reportYear) : new Date().getFullYear()
     
     const pageSize = 10
     const from = (page - 1) * pageSize
@@ -136,8 +140,19 @@ export default async function AttendancePage({
                 </Card>
             </div>
 
-            {/* Toolbar */}
-            <AttendanceFilters />
+            {/* Toolbar + Report Generator */}
+            <div className="relative">
+                <AttendanceFilters />
+                {reportStartMonth && reportEndMonth && (
+                    <div className="absolute bottom-4 right-4 sm:bottom-[1.1rem] sm:right-4 bg-accent/5">
+                        <ReportGenerator
+                            reportStartMonth={reportStartMonth}
+                            reportEndMonth={reportEndMonth}
+                            reportYear={reportYear}
+                        />
+                    </div>
+                )}
+            </div>
 
             {/* Mass List */}
             <Card className="border border-border shadow-xl bg-card rounded-[2rem] overflow-hidden">

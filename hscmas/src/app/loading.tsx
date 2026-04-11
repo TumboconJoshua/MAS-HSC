@@ -9,8 +9,12 @@ export default function RootLoading() {
         <div className="absolute inset-0 bg-accent/20 blur-[50px] scale-150 rounded-full animate-pulse transition-transform duration-1000"></div>
         
         {/* Sacred Icon Container */}
-        <div className="relative z-10 w-24 h-24 rounded-[3rem] bg-background/90 border border-accent/30 flex items-center justify-center shadow-2xl shadow-accent/20">
-          <Church className="w-12 h-12 text-accent group-hover:scale-110 transition-transform duration-700" />
+        <div className="relative z-10 w-24 h-24 rounded-[3rem] bg-background/90 border border-accent/30 flex items-center justify-center shadow-2xl shadow-accent/20 overflow-hidden p-3">
+          <img 
+            src="/images/MINISTRY OF ALTAR SERVER - HSC.png" 
+            alt="MAS-HSC Logo" 
+            className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-700" 
+          />
           
           {/* Subtle Outer Spinner */}
           <div className="absolute inset-[-6px] rounded-[3.2rem] border-2 border-transparent border-t-accent/60 border-r-accent/20 animate-spin" style={{ animationDuration: '2s' }}></div>

@@ -57,8 +57,12 @@ export default function DashboardLayout({
             )}>
                 <div className="p-6 flex items-center justify-between border-b border-border h-16 shrink-0">
                     <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-xl bg-accent/10 border border-accent/20">
-                            <Church className="w-6 h-6 text-accent" />
+                        <div className="p-1 rounded-xl bg-accent/5 border border-accent/10 overflow-hidden">
+                            <img 
+                                src="/images/MINISTRY OF ALTAR SERVER - HSC.png" 
+                                alt="MAS-HSC Logo" 
+                                className="w-9 h-9 object-contain"
+                            />
                         </div>
                         <div>
                             <h1 className="text-lg font-bold tracking-tight">MAS-HSC</h1>
