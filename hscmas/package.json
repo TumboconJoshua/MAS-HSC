@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --turbo",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
@@ -25,7 +25,8 @@
     "react-dom": "19.2.3",
     "react-hot-toast": "^2.6.0",
     "tailwind-merge": "^2.0.0",
-    "use-debounce": "^10.1.0"
+    "use-debounce": "^10.1.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
