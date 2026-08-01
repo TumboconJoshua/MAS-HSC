@@ -61,29 +61,28 @@ export function Modal({
                             transition={{ type: "spring", duration: 0.4, bounce: 0.1 }}
                             className="bg-background text-foreground border border-border shadow-2xl rounded-3xl w-full max-w-md overflow-hidden pointer-events-auto"
                         >
-                            <div className="p-6 sm:p-8">
-                                <div className="flex items-start justify-between gap-4 mb-5">
-                                    <div className={`p-3 rounded-2xl ${isDestructive ? 'bg-red-500/10 text-red-500' : 'bg-accent/10 text-accent'}`}>
-                                        <AlertTriangle className="w-6 h-6" />
-                                    </div>
-                                    <button 
-                                        onClick={onClose}
-                                        disabled={isLoading}
-                                        className="text-muted-foreground hover:text-foreground transition-colors p-1"
-                                    >
-                                        <X className="w-5 h-5" />
-                                    </button>
+                            <div className="p-6 sm:p-8 text-center relative">
+                                <button 
+                                    onClick={onClose}
+                                    disabled={isLoading}
+                                    className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors p-1"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+
+                                <div className={`p-3.5 rounded-2xl w-fit mx-auto mb-4 ${isDestructive ? 'bg-red-500/10 text-red-500' : 'bg-accent/10 text-accent'}`}>
+                                    <AlertTriangle className="w-6 h-6" />
                                 </div>
 
-                                <h2 className="text-xl font-bold tracking-tight mb-2">{title}</h2>
-                                <p className="text-muted-foreground text-sm leading-relaxed">
+                                <h2 className="text-xl font-bold tracking-tight mb-2 text-foreground">{title}</h2>
+                                <p className="text-muted-foreground text-sm leading-relaxed max-w-sm mx-auto">
                                     {description}
                                 </p>
 
-                                <div className="flex flex-col-reverse sm:flex-row items-center gap-3 mt-8">
+                                <div className="flex flex-col-reverse sm:flex-row items-center justify-center gap-3 mt-8">
                                     <Button 
                                         variant="outline" 
-                                        className="w-full sm:w-auto rounded-xl"
+                                        className="w-full sm:w-1/2 rounded-xl"
                                         onClick={onClose}
                                         disabled={isLoading}
                                     >
@@ -91,7 +90,7 @@ export function Modal({
                                     </Button>
                                     <Button 
                                         variant={isDestructive ? 'destructive' : 'accent'}
-                                        className={`w-full sm:w-auto rounded-xl shadow-lg ${isDestructive ? 'shadow-red-500/20' : 'shadow-accent/20'}`}
+                                        className={`w-full sm:w-1/2 rounded-xl shadow-lg ${isDestructive ? 'shadow-red-500/20' : 'shadow-accent/20'}`}
                                         onClick={onConfirm}
                                         disabled={isLoading}
                                     >

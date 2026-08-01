@@ -12,7 +12,8 @@ import {
     Church,
     Menu,
     X,
-    Shirt
+    Shirt,
+    Wallet
 } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -86,6 +87,7 @@ export default function DashboardLayout({
                     <NavItem href="/schedule" icon={CalendarRange} label="Schedule" active={pathname.startsWith('/schedule')} />
                     <NavItem href="/equipment" icon={ShieldCheck} label="Equipment" active={pathname.startsWith('/equipment')} />
                     <NavItem href="/vestments" icon={Shirt} label="Vestments" active={pathname.startsWith('/vestments')} />
+                    <NavItem href="/funds" icon={Wallet} label="Funds" active={pathname.startsWith('/funds')} />
                 </nav>
 
                 <div className="p-4 mt-auto border-t border-border">

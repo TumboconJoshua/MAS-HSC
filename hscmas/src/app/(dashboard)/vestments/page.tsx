@@ -216,16 +216,16 @@ function ComponentBadge({ condition, size }: { condition?: string; size?: string
     }
 
     const config: Record<string, { class: string; label: string }> = {
-        good: { class: 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400', label: '🟢 Good' },
-        laundry: { class: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400', label: '🟡 Laundry' },
-        damaged: { class: 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400', label: '🔴 Damaged' },
-        lost: { class: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400', label: '⚫ Lost' }
+        good: { class: 'bg-green-500/10 text-green-700 dark:text-green-400 border border-green-500/20', label: '🟢 Good' },
+        laundry: { class: 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border border-yellow-500/20', label: '🟡 Laundry' },
+        damaged: { class: 'bg-red-500/10 text-red-700 dark:text-red-400 border border-red-500/20', label: '🔴 Damaged' },
+        lost: { class: 'bg-zinc-500/10 text-zinc-700 dark:text-zinc-400 border border-zinc-500/20', label: '⚫ Lost' }
     }
     const current = config[condition] || config.good
 
     return (
         <div className="flex items-center gap-1.5">
-            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${current.class}`}>
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${current.class}`}>
                 {current.label}
             </span>
             {size && <span className="text-[10px] font-mono text-muted-foreground font-semibold">({size})</span>}
