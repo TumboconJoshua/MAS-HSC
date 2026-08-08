@@ -27,27 +27,38 @@ export default async function DashboardPage() {
         .select('*', { count: 'exact', head: true })
 
     // 2. Fetch Upcoming Masses (next 7 days)
+    const formatLocalYMD = (d: Date) => {
+        const y = d.getFullYear()
+        const m = String(d.getMonth() + 1).padStart(2, '0')
+        const day = String(d.getDate()).padStart(2, '0')
+        return `${y}-${m}-${day}`
+    }
+
     const now = new Date()
+    const todayStr = formatLocalYMD(now)
+
     const nextWeek = new Date()
     nextWeek.setDate(now.getDate() + 7)
-    
+    const nextWeekStr = formatLocalYMD(nextWeek)
+
     const { data: upcomingMasses } = await supabase
         .from('masses')
         .select('id')
-        .gte('date', now.toISOString().split('T')[0])
-        .lte('date', nextWeek.toISOString().split('T')[0])
+        .gte('date', todayStr)
+        .lte('date', nextWeekStr)
 
     const upcomingCount = upcomingMasses?.length || 0
 
     // 3. Fetch Overall Attendance Rate (Last 30 days for relevance and to avoid row limits)
     const thirtyDaysAgo = new Date()
     thirtyDaysAgo.setDate(now.getDate() - 30)
-    
+    const thirtyDaysAgoStr = formatLocalYMD(thirtyDaysAgo)
+
     const { data: recentAttendance } = await supabase
         .from('attendance')
         .select('status')
-        .gte('created_at', thirtyDaysAgo.toISOString())
-    
+        .gte('created_at', thirtyDaysAgoStr)
+
     const totalAttendanceRecords = recentAttendance?.length || 0
     const presentRecords = recentAttendance?.filter((a: any) => ['present', 'service', 'late'].includes(a.status)).length || 0
     const attendanceRate = totalAttendanceRecords > 0 ? Math.round((presentRecords / totalAttendanceRecords) * 100) : 0
@@ -57,58 +68,96 @@ export default async function DashboardPage() {
         .from('equipment')
         .select('id')
         .in('condition', ['fair', 'damaged', 'lost'])
-    
+
     const alertsCount = equipmentAlerts?.length || 0
 
     // 5. Fetch Server of the Month (Highest attendance in the current month based on mass dates)
-    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
-    
-    const { data: serverStats } = await supabase
+    const firstDayOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+    const lastDayOfMonthDate = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+    const lastDayOfMonth = formatLocalYMD(lastDayOfMonthDate)
+
+    // Fetch active servers to filter out inactive members
+    const { data: activeServersData } = await supabase
+        .from('servers')
+        .select('id')
+        .eq('status', 'active')
+
+    const activeServerIds = new Set(activeServersData?.map(s => s.id) || [])
+
+    // Query current month attendance records
+    let { data: serverStats } = await supabase
         .from('attendance')
         .select('server_id, status, masses!inner(date)')
         .gte('masses.date', firstDayOfMonth)
+        .lte('masses.date', lastDayOfMonth)
+
+    // If no attendance records exist for the current month yet, fallback to recent 60 days
+    let isFallbackPeriod = false
+    if (!serverStats || serverStats.length === 0) {
+        const sixtyDaysAgo = new Date()
+        sixtyDaysAgo.setDate(now.getDate() - 60)
+        const sixtyDaysAgoStr = formatLocalYMD(sixtyDaysAgo)
+
+        const { data: fallbackStats } = await supabase
+            .from('attendance')
+            .select('server_id, status, masses!inner(date)')
+            .gte('masses.date', sixtyDaysAgoStr)
+
+        if (fallbackStats && fallbackStats.length > 0) {
+            serverStats = fallbackStats
+            isFallbackPeriod = true
+        }
+    }
+
+    // Query masses count in period
+    const { data: massesInPeriod } = await supabase
+        .from('masses')
+        .select('id')
+        .gte('date', isFallbackPeriod ? formatLocalYMD(new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000)) : firstDayOfMonth)
+        .lte('date', isFallbackPeriod ? todayStr : lastDayOfMonth)
+
+    const totalMassesInPeriod = massesInPeriod?.length || 1
 
     const serverServiceCounts: Record<string, number> = {} // 'service' status
-    const serverPresenceCounts: Record<string, number> = {} // 'service' + 'present' status
-    const serverTotalCounts: Record<string, number> = {} // All records (for rate)
+    const serverPresenceCounts: Record<string, number> = {} // 'service' + 'present' + 'late' status
+    const serverTotalCounts: Record<string, number> = {} // All records for server
 
     serverStats?.forEach((stat: any) => {
         const sid = stat.server_id
+        if (activeServerIds.size > 0 && !activeServerIds.has(sid)) return;
+
         serverTotalCounts[sid] = (serverTotalCounts[sid] || 0) + 1
-        
+
         if (stat.status === 'service') {
             serverServiceCounts[sid] = (serverServiceCounts[sid] || 0) + 1
             serverPresenceCounts[sid] = (serverPresenceCounts[sid] || 0) + 1
-        } else if (stat.status === 'present') {
+        } else if (['present', 'late'].includes(stat.status)) {
             serverPresenceCounts[sid] = (serverPresenceCounts[sid] || 0) + 1
         }
     })
 
-    // Sort to find the top server. 
-    // Qualification Criteria: 
-    // 1. Most "Total No. of Service" (service status)
-    // 2. Most "Total Presences" (service + present status)
-    const topServerId = Object.keys(serverTotalCounts).sort((a, b) => {
-        // Primary: Service Count
+    // Sort to find the top server.
+    const topServerId = Object.keys(serverPresenceCounts).sort((a, b) => {
         const sA = serverServiceCounts[a] || 0
         const sB = serverServiceCounts[b] || 0
         if (sB !== sA) return sB - sA
-        
-        // Secondary: Presence Count (Service + Present)
+
         const pA = serverPresenceCounts[a] || 0
         const pB = serverPresenceCounts[b] || 0
-        return pB - pA
+        if (pB !== pA) return pB - pA
+
+        return (serverTotalCounts[b] || 0) - (serverTotalCounts[a] || 0)
     })[0] || ''
 
     const { data: topServer } = topServerId 
         ? await supabase.from('servers').select('*').eq('id', topServerId).single()
         : { data: null }
 
-    // Calculate metrics for the top server if exists
+    // Calculate metrics for top server if exists
     const topServerServiceCount = topServer ? (serverServiceCounts[topServerId] || 0) : 0
     const topServerPresenceCount = topServer ? (serverPresenceCounts[topServerId] || 0) : 0
     const topServerRate = topServer 
-        ? Math.round((topServerPresenceCount / (serverTotalCounts[topServerId] || 1)) * 100)
+        ? Math.min(100, Math.round((topServerPresenceCount / Math.max(totalMassesInPeriod, serverTotalCounts[topServerId] || 1)) * 100))
         : 0
 
     // 6. Consolidated Activity (Latest 5 actions across system)
@@ -241,82 +290,100 @@ export default async function DashboardPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                 {/* 1. Server of the Month Recognition (Column 1) */}
-                {topServer && (
-                    <Card className="border border-accent/30 shadow-2xl bg-card rounded-[2.5rem] overflow-hidden relative group/award flex flex-col h-full">
-                        <div className="absolute inset-0 z-0 opacity-20 group-hover:opacity-30 transition-opacity duration-700">
-                             <img 
-                                src="/images/award_bg.png" 
-                                alt="" 
-                                className="w-full h-full object-cover"
-                             />
+                <Card className="border border-accent/30 shadow-2xl bg-card rounded-[2.5rem] overflow-hidden relative group/award flex flex-col h-full">
+                    <div className="absolute inset-0 z-0 opacity-20 group-hover:opacity-30 transition-opacity duration-700">
+                         <img 
+                            src="/images/award_bg.png" 
+                            alt="" 
+                            className="w-full h-full object-cover"
+                         />
+                    </div>
+                    <div className="absolute inset-0 bg-gradient-to-br from-accent/10 via-transparent to-background/80 z-0"></div>
+                    
+                    <CardHeader className="relative z-10 pb-2 flex flex-row items-center justify-between">
+                        <div>
+                            <CardTitle className="text-sm font-bold uppercase tracking-widest text-accent flex items-center gap-2">
+                                <Trophy className="w-4 h-4" />
+                                Award
+                            </CardTitle>
+                            <CardDescription className="font-bold text-foreground/80 mt-1 uppercase text-[10px] tracking-tighter">
+                                Server of the Month {isFallbackPeriod ? '(Recent)' : ''}
+                            </CardDescription>
                         </div>
-                        <div className="absolute inset-0 bg-gradient-to-br from-accent/10 via-transparent to-background/80 z-0"></div>
-                        
-                        <CardHeader className="relative z-10 pb-2 flex flex-row items-center justify-between">
-                            <div>
-                                <CardTitle className="text-sm font-bold uppercase tracking-widest text-accent flex items-center gap-2">
-                                    <Trophy className="w-4 h-4" />
-                                    Award
-                                </CardTitle>
-                                <CardDescription className="font-bold text-foreground/80 mt-1 uppercase text-[10px] tracking-tighter">
-                                    Server of the Month
-                                </CardDescription>
-                            </div>
-                            <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center border border-accent/30">
-                                <Star className="w-5 h-5 text-accent fill-accent" />
-                            </div>
-                        </CardHeader>
+                        <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center border border-accent/30">
+                            <Star className="w-5 h-5 text-accent fill-accent" />
+                        </div>
+                    </CardHeader>
 
-                        <CardContent className="relative z-10 pt-4 flex flex-col items-center text-center pb-8 flex-1 justify-center">
-                            <div className="relative mb-6">
-                                <div className="w-24 h-24 rounded-[2rem] bg-secondary flex items-center justify-center border-2 border-accent/40 shadow-2xl overflow-hidden group-hover/award:scale-105 transition-transform duration-500">
-                                    {topServer.avatar_url ? (
-                                        <img src={topServer.avatar_url} alt="" className="w-full h-full object-cover" />
-                                    ) : (
-                                        <span className="text-3xl font-black text-accent">{topServer.first_name[0]}{topServer.last_name[0]}</span>
-                                    )}
+                    <CardContent className="relative z-10 pt-4 flex flex-col items-center text-center pb-8 flex-1 justify-center">
+                        {topServer ? (
+                            <>
+                                <div className="relative mb-6">
+                                    <div className="w-24 h-24 rounded-[2rem] bg-secondary flex items-center justify-center border-2 border-accent/40 shadow-2xl overflow-hidden group-hover/award:scale-105 transition-transform duration-500">
+                                        {topServer.avatar_url ? (
+                                            <img src={topServer.avatar_url} alt="" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <span className="text-3xl font-black text-accent">
+                                                {(topServer.first_name?.[0] || 'S')}{(topServer.last_name?.[0] || '')}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="absolute -bottom-2 -right-2 bg-accent text-accent-foreground w-8 h-8 rounded-full flex items-center justify-center shadow-lg border-2 border-background">
+                                        <Star className="w-4 h-4 fill-current" />
+                                    </div>
                                 </div>
-                                <div className="absolute -bottom-2 -right-2 bg-accent text-accent-foreground w-8 h-8 rounded-full flex items-center justify-center shadow-lg border-2 border-background">
-                                    <Star className="w-4 h-4 fill-current" />
-                                </div>
-                            </div>
-                            
-                            <h3 className="text-xl font-black tracking-tight mb-1">{topServer.first_name} {topServer.last_name}</h3>
-                            <p className="text-accent font-bold text-[10px] uppercase tracking-widest mb-6 italic">
-                                {topServer.group_name || 'Altar Server'}
-                            </p>
+                                
+                                <h3 className="text-xl font-black tracking-tight mb-1">{topServer.first_name || 'Altar'} {topServer.last_name || 'Server'}</h3>
+                                <p className="text-accent font-bold text-[10px] uppercase tracking-widest mb-6 italic">
+                                    {topServer.group_name || 'Altar Server'}
+                                </p>
 
-                            <div className="grid grid-cols-2 gap-3 w-full max-w-[200px]">
-                                <div className="p-3 bg-secondary/50 rounded-2xl border border-border group-hover/award:border-accent/20 transition-colors">
-                                    <div className="text-lg font-black text-accent">{topServerServiceCount}</div>
-                                    <div className="text-[9px] font-bold text-muted-foreground uppercase leading-tight">Service<br/>Count</div>
+                                <div className="grid grid-cols-2 gap-3 w-full max-w-[200px]">
+                                    <div className="p-3 bg-secondary/50 rounded-2xl border border-border group-hover/award:border-accent/20 transition-colors">
+                                        <div className="text-lg font-black text-accent">{topServerServiceCount}</div>
+                                        <div className="text-[9px] font-bold text-muted-foreground uppercase leading-tight">Service<br/>Count</div>
+                                    </div>
+                                    <div className="p-3 bg-secondary/50 rounded-2xl border border-border group-hover/award:border-accent/20 transition-colors">
+                                        <div className="text-lg font-black text-green-500">{topServerPresenceCount}</div>
+                                        <div className="text-[9px] font-bold text-muted-foreground uppercase leading-tight">Total<br/>Presence</div>
+                                    </div>
                                 </div>
-                                <div className="p-3 bg-secondary/50 rounded-2xl border border-border group-hover/award:border-accent/20 transition-colors">
-                                    <div className="text-lg font-black text-green-500">{topServerPresenceCount}</div>
-                                    <div className="text-[9px] font-bold text-muted-foreground uppercase leading-tight">Total<br/>Presence</div>
+
+                                <div className="mt-4 px-4 py-2 bg-accent/5 rounded-full border border-accent/10">
+                                    <span className="text-[10px] font-bold text-accent uppercase tracking-widest">
+                                        Attendance Rate: {topServerRate}%
+                                    </span>
                                 </div>
-                            </div>
 
-                            <div className="mt-4 px-4 py-2 bg-accent/5 rounded-full border border-accent/10">
-                                <span className="text-[10px] font-bold text-accent uppercase tracking-widest">
-                                    Attendance Rate: {topServerRate}%
-                                </span>
+                                <Link href={`/servers/${topServer.id}`} className="mt-8">
+                                    <Button variant="accent" size="sm" className="rounded-full shadow-lg shadow-accent/20 h-10 px-8 font-bold">
+                                        Achievements
+                                    </Button>
+                                </Link>
+                            </>
+                        ) : (
+                            <div className="space-y-4 my-auto py-6 px-2">
+                                <div className="w-20 h-20 rounded-[2rem] bg-accent/10 border border-accent/30 flex items-center justify-center mx-auto text-accent">
+                                    <Trophy className="w-10 h-10 opacity-70" />
+                                </div>
+                                <div>
+                                    <h3 className="text-base font-bold text-foreground">Award Pending</h3>
+                                    <p className="text-xs text-muted-foreground mt-1 max-w-[200px] mx-auto">
+                                        Record mass attendance to select this month's top server.
+                                    </p>
+                                </div>
+                                <Link href="/attendance">
+                                    <Button variant="outline" size="sm" className="rounded-full border-accent/30 text-accent hover:bg-accent/10 text-xs font-bold mt-2">
+                                        Record Attendance
+                                    </Button>
+                                </Link>
                             </div>
-
-                            <Link href={`/servers/${topServer.id}`} className="mt-8">
-                                <Button variant="accent" size="sm" className="rounded-full shadow-lg shadow-accent/20 h-10 px-8 font-bold">
-                                    Achievements
-                                </Button>
-                            </Link>
-                        </CardContent>
-                    </Card>
-                )}
+                        )}
+                    </CardContent>
+                </Card>
 
                 {/* 2. Recent Activities (Columns 2-3) */}
-                <Card className={cn(
-                    "border border-border shadow-md bg-card flex flex-col h-full", 
-                    topServer ? "lg:col-span-2" : "lg:col-span-3"
-                )}>
+                <Card className="border border-border shadow-md bg-card flex flex-col h-full lg:col-span-2">
                     <CardHeader className="flex flex-row items-center justify-between pb-2 border-b border-border/50">
                         <div>
                             <CardTitle className="text-lg font-semibold">Live Activity</CardTitle>

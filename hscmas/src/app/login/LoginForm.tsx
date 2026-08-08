@@ -4,11 +4,12 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { login } from './actions'
 import { Button } from '@/components/ui/button'
-import { Mail, Lock, Loader2 } from 'lucide-react'
+import { Mail, Lock, Loader2, Eye, EyeOff, ShieldCheck, ArrowRight } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
 export function LoginForm() {
     const [isPending, setIsPending] = useState(false)
+    const [showPassword, setShowPassword] = useState(false)
     const router = useRouter()
 
     async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -20,69 +21,126 @@ export function LoginForm() {
         try {
             const result = await login(formData)
             if (result?.error) {
-                toast.error(result.error)
+                toast.error(result.error, {
+                    style: {
+                        background: '#0f172a',
+                        color: '#f8fafc',
+                        border: '1px solid rgba(239, 68, 68, 0.3)',
+                    },
+                    iconTheme: {
+                        primary: '#ef4444',
+                        secondary: '#0f172a',
+                    },
+                })
                 setIsPending(false)
             }
         } catch (error: any) {
             if (error.message !== 'NEXT_REDIRECT') {
-                toast.error('An unexpected error occurred')
+                toast.error('An unexpected error occurred. Please try again.', {
+                    style: {
+                        background: '#0f172a',
+                        color: '#f8fafc',
+                        border: '1px solid rgba(239, 68, 68, 0.3)',
+                    },
+                })
                 setIsPending(false)
             }
         }
     }
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6 text-left">
+            {/* Email Field */}
             <div className="space-y-2">
-                <label htmlFor="email" className="text-[10px] uppercase tracking-widest font-bold ml-1 text-muted-foreground">
+                <label 
+                    htmlFor="email" 
+                    className="block text-[11px] font-bold uppercase tracking-widest text-slate-300 ml-1"
+                >
                     Email Address
                 </label>
                 <div className="relative group">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-accent transition-colors duration-300" />
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center justify-center text-slate-400 group-focus-within:text-amber-400 transition-colors duration-300 pointer-events-none">
+                        <Mail className="w-4 h-4" />
+                    </div>
                     <input
                         id="email"
                         name="email"
                         type="email"
-                        placeholder="your@email.com"
+                        placeholder="your.email@example.com"
                         required
-                        className="w-full pl-12 pr-4 py-3 bg-secondary/30 border border-border rounded-2xl focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-all duration-300 placeholder:text-muted-foreground/30 text-sm"
+                        disabled={isPending}
+                        className="w-full pl-11 pr-4 py-3.5 bg-slate-950/60 border border-slate-800 rounded-2xl text-slate-100 placeholder:text-slate-500 text-sm focus:outline-none focus:border-amber-500/80 focus:ring-2 focus:ring-amber-500/25 transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed"
                     />
                 </div>
             </div>
 
+            {/* Password Field */}
             <div className="space-y-2">
-                <label htmlFor="password" className="text-[10px] uppercase tracking-widest font-bold ml-1 text-muted-foreground">
-                    Password
-                </label>
+                <div className="flex items-center justify-between ml-1">
+                    <label 
+                        htmlFor="password" 
+                        className="block text-[11px] font-bold uppercase tracking-widest text-slate-300"
+                    >
+                        Password
+                    </label>
+                </div>
                 <div className="relative group">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-accent transition-colors duration-300" />
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center justify-center text-slate-400 group-focus-within:text-amber-400 transition-colors duration-300 pointer-events-none">
+                        <Lock className="w-4 h-4" />
+                    </div>
                     <input
                         id="password"
                         name="password"
-                        type="password"
-                        placeholder="••••••••"
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="••••••••••••"
                         required
-                        className="w-full pl-12 pr-4 py-3 bg-secondary/30 border border-border rounded-2xl focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-all duration-300 placeholder:text-muted-foreground/30 text-sm"
+                        disabled={isPending}
+                        className="w-full pl-11 pr-12 py-3.5 bg-slate-950/60 border border-slate-800 rounded-2xl text-slate-100 placeholder:text-slate-500 text-sm focus:outline-none focus:border-amber-500/80 focus:ring-2 focus:ring-amber-500/25 transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed"
                     />
+                    <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        disabled={isPending}
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-amber-400 focus:text-amber-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50 rounded-lg transition-colors duration-200"
+                    >
+                        {showPassword ? (
+                            <EyeOff className="w-4 h-4" />
+                        ) : (
+                            <Eye className="w-4 h-4" />
+                        )}
+                    </button>
                 </div>
             </div>
 
-            <div className="flex flex-col gap-3 pt-4">
+            {/* Action Buttons */}
+            <div className="pt-3 space-y-4">
                 <Button
                     type="submit"
                     variant="default"
                     disabled={isPending}
-                    className="w-full h-12 rounded-2xl text-sm font-bold shadow-xl shadow-accent/20 bg-accent hover:bg-accent/90 text-white transition-all active:scale-[0.98]"
+                    className="w-full h-12 rounded-2xl text-sm font-bold text-slate-950 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-300 hover:via-amber-400 hover:to-amber-500 shadow-lg shadow-amber-500/20 transition-all duration-300 active:scale-[0.99] border-none disabled:opacity-70 disabled:cursor-not-allowed group relative overflow-hidden"
                 >
-                    {isPending ? (
-                        <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Signing In...
-                        </>
-                    ) : (
-                        'Sign In'
-                    )}
+                    <span className="relative z-10 flex items-center justify-center gap-2">
+                        {isPending ? (
+                            <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <span>Authenticating...</span>
+                            </>
+                        ) : (
+                            <>
+                                <span>Sign In to Portal</span>
+                                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" />
+                            </>
+                        )}
+                    </span>
+                    <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 pointer-events-none" />
                 </Button>
+
+                <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-400 font-medium pt-1">
+                    <ShieldCheck className="w-3.5 h-3.5 text-amber-400/90" />
+                    <span>Protected Portal Access • HSC-MAS</span>
+                </div>
             </div>
         </form>
     )
