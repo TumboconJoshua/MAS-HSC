@@ -49,19 +49,29 @@ export default async function DashboardPage() {
 
     const upcomingCount = upcomingMasses?.length || 0
 
-    // 3. Fetch Overall Attendance Rate (Last 30 days for relevance and to avoid row limits)
+    // 3. Fetch Overall Attendance Rate (Join with masses date, fallback to overall if no recent 30-day records)
     const thirtyDaysAgo = new Date()
     thirtyDaysAgo.setDate(now.getDate() - 30)
     const thirtyDaysAgoStr = formatLocalYMD(thirtyDaysAgo)
 
-    const { data: recentAttendance } = await supabase
+    const { data: recent30Data } = await supabase
         .from('attendance')
-        .select('status')
-        .gte('created_at', thirtyDaysAgoStr)
+        .select('status, masses!inner(date)')
+        .gte('masses.date', thirtyDaysAgoStr)
+
+    let recentAttendance = recent30Data as any[] | null
+
+    // Fallback: If no attendance in the last 30 days, fetch overall attendance records
+    if (!recentAttendance || recentAttendance.length === 0) {
+        const { data: overallAttendance } = await supabase
+            .from('attendance')
+            .select('status')
+        recentAttendance = overallAttendance as any[] | null
+    }
 
     const totalAttendanceRecords = recentAttendance?.length || 0
     const presentRecords = recentAttendance?.filter((a: any) => ['present', 'service', 'late'].includes(a.status)).length || 0
-    const attendanceRate = totalAttendanceRecords > 0 ? Math.round((presentRecords / totalAttendanceRecords) * 100) : 0
+    const attendanceRate = totalAttendanceRecords > 0 ? Math.round((presentRecords / totalAttendanceRecords) * 100) : null
 
     // 4. Fetch Equipment Alerts (maintenance needed)
     const { data: equipmentAlerts } = await supabase
@@ -167,7 +177,7 @@ export default async function DashboardPage() {
         { data: recentEquipment },
         { data: recentMasses }
     ] = await Promise.all([
-        supabase.from('attendance').select('id, created_at, status, servers(first_name, last_name), masses(title)').order('created_at', { ascending: false }).limit(3),
+        supabase.from('attendance').select('id, status, servers(first_name, last_name), masses(title, created_at)').order('id', { ascending: false }).limit(3),
         supabase.from('servers').select('id, created_at, first_name, last_name').order('created_at', { ascending: false }).limit(3),
         supabase.from('equipment').select('id, updated_at, name').order('updated_at', { ascending: false }).limit(3),
         supabase.from('masses').select('id, created_at, title').order('created_at', { ascending: false }).limit(3)
@@ -273,10 +283,10 @@ export default async function DashboardPage() {
                 />
                 <StatCard
                     title="Attendance Rate"
-                    value={`${attendanceRate}%`}
-                    description="Average participation"
+                    value={attendanceRate !== null ? `${attendanceRate}%` : '0%'}
+                    description={attendanceRate !== null ? "Average participation" : "No attendance recorded yet"}
                     icon={Activity}
-                    trend={attendanceRate > 90 ? "up" : undefined}
+                    trend={attendanceRate !== null && attendanceRate > 90 ? "up" : undefined}
                     color="text-green-500"
                 />
                 <StatCard
