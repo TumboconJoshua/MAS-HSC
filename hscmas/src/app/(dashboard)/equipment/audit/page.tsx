@@ -4,11 +4,30 @@ import { AuditFlow } from './AuditFlow'
 export default async function AuditPage() {
     const supabase = await createClient()
 
-    // Fetch the most up-to-date accurate counts of inventory
-    const { data: equipment } = await supabase
-        .from('equipment')
-        .select('*')
-        .order('name', { ascending: true })
+    const [{ data: equipment }, { data: officers }] = await Promise.all([
+        supabase
+            .from('equipment')
+            .select('*')
+            .order('name', { ascending: true }),
+        supabase
+            .from('servers')
+            .select('first_name, last_name, officer_role')
+            .eq('status', 'active')
+            .in('officer_role', ['Secretary', 'Coordinator']),
+    ])
 
-    return <AuditFlow initialEquipment={equipment || []} />
+    const officerName = (role: 'Secretary' | 'Coordinator') => {
+        const matches = (officers || []).filter(officer => officer.officer_role === role)
+        return matches.length === 1
+            ? `${matches[0].first_name} ${matches[0].last_name}`.trim()
+            : null
+    }
+
+    return (
+        <AuditFlow
+            initialEquipment={equipment || []}
+            auditedBy={officerName('Secretary')}
+            verifiedBy={officerName('Coordinator')}
+        />
+    )
 }

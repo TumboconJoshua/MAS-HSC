@@ -18,7 +18,28 @@ interface AuditItem {
     actualQuantity: number
 }
 
-export function AuditFlow({ initialEquipment }: { initialEquipment: any[] }) {
+interface EquipmentRecord {
+    id: string
+    name: string
+    quantity: number
+}
+
+const loadLogo = () => new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image()
+    image.onload = () => resolve(image)
+    image.onerror = () => reject(new Error('Logo could not be loaded'))
+    image.src = '/images/MINISTRY OF ALTAR SERVER - HSC.png'
+})
+
+export function AuditFlow({
+    initialEquipment,
+    auditedBy,
+    verifiedBy,
+}: {
+    initialEquipment: EquipmentRecord[]
+    auditedBy: string | null
+    verifiedBy: string | null
+}) {
     const router = useRouter()
     
     // Setup state matching original quantities
@@ -31,6 +52,7 @@ export function AuditFlow({ initialEquipment }: { initialEquipment: any[] }) {
         }))
     )
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
 
     // Calculate how many items have actually changed
     const discrepancies = items.filter(i => i.actualQuantity !== i.systemQuantity)
@@ -48,291 +70,289 @@ export function AuditFlow({ initialEquipment }: { initialEquipment: any[] }) {
         setItems(prev => prev.map(item => ({ ...item, actualQuantity: item.systemQuantity })))
     }
 
-    const generatePDF = () => {
-        const doc = new jsPDF()
-        const pageWidth = doc.internal.pageSize.getWidth()
-        const now = new Date()
-        const dateStr = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-        const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+    const generatePDF = async () => {
+        setIsGeneratingPdf(true)
 
-        // ── Color Palette ──
-        const slate800: [number, number, number] = [30, 41, 59]
-        const slate600: [number, number, number] = [71, 85, 105]
-        const slate400: [number, number, number] = [148, 163, 184]
-        const green600: [number, number, number] = [22, 163, 74]
-        const red600: [number, number, number] = [220, 38, 38]
-        const amber600: [number, number, number] = [217, 119, 6]
-        const white: [number, number, number] = [255, 255, 255]
+        try {
+            let logo: HTMLImageElement | null = null
+            try {
+                logo = await loadLogo()
+            } catch {
+                // The report remains usable if the optional crest cannot be loaded.
+            }
 
-        // ────────────────────────────────────────────
-        // 1. HEADER BAND
-        // ────────────────────────────────────────────
-        doc.setFillColor(...slate800)
-        doc.rect(0, 0, pageWidth, 40, 'F')
+            const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+            const pageWidth = doc.internal.pageSize.getWidth()
+            const now = new Date()
+            const dateStr = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+            const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+            const refNum = `AUD-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
 
-        doc.setTextColor(...white)
-        doc.setFontSize(22)
-        doc.setFont('helvetica', 'bold')
-        doc.text('INVENTORY AUDIT REPORT', 14, 18)
+            const ink: [number, number, number] = [30, 41, 59]
+            const muted: [number, number, number] = [100, 116, 139]
+            const subtle: [number, number, number] = [148, 163, 184]
+            const line: [number, number, number] = [226, 232, 240]
+            const surface: [number, number, number] = [248, 250, 252]
+            const gold: [number, number, number] = [212, 175, 55]
+            const green: [number, number, number] = [22, 101, 52]
+            const amber: [number, number, number] = [180, 83, 9]
+            const red: [number, number, number] = [185, 28, 28]
+            const white: [number, number, number] = [255, 255, 255]
 
-        doc.setFontSize(10)
-        doc.setFont('helvetica', 'normal')
-        doc.text('Ministry of Altar Servers — Holy Spirit Chapel', 14, 26)
-        doc.text(`${dateStr}  •  ${timeStr}`, 14, 33)
+            doc.setFillColor(...ink)
+            doc.rect(0, 0, pageWidth, 42, 'F')
+            doc.setFillColor(...gold)
+            doc.rect(0, 40, pageWidth, 2, 'F')
 
-        // Reference number on right side
-        const refNum = `AUD-${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`
-        doc.setFontSize(9)
-        doc.text(`Ref: ${refNum}`, pageWidth - 14, 33, { align: 'right' })
+            if (logo) doc.addImage(logo, 'PNG', 14, 7, 27, 27)
 
-        // ────────────────────────────────────────────
-        // 2. EXECUTIVE SUMMARY SECTION
-        // ────────────────────────────────────────────
-        let yPos = 52
-
-        doc.setTextColor(...slate800)
-        doc.setFontSize(13)
-        doc.setFont('helvetica', 'bold')
-        doc.text('Executive Summary', 14, yPos)
-        yPos += 3
-
-        // Thin accent line
-        doc.setDrawColor(...slate400)
-        doc.setLineWidth(0.3)
-        doc.line(14, yPos, pageWidth - 14, yPos)
-        yPos += 8
-
-        const totalStock = items.reduce((sum, i) => sum + i.actualQuantity, 0)
-        const matchCount = items.filter(i => i.actualQuantity === i.systemQuantity).length
-        const overCount = items.filter(i => i.actualQuantity > i.systemQuantity).length
-        const underCount = items.filter(i => i.actualQuantity < i.systemQuantity).length
-
-        // Summary stat boxes
-        const boxW = (pageWidth - 28 - 18) / 4   // 4 boxes with 6px gaps
-        const boxH = 22
-        const summaryData = [
-            { label: 'Total Items', value: String(items.length), color: slate800 },
-            { label: 'Matches', value: String(matchCount), color: green600 },
-            { label: 'Overstocked', value: String(overCount), color: amber600 },
-            { label: 'Understocked', value: String(underCount), color: red600 },
-        ]
-
-        summaryData.forEach((s, idx) => {
-            const x = 14 + idx * (boxW + 6)
-            doc.setFillColor(245, 247, 250)
-            doc.roundedRect(x, yPos, boxW, boxH, 2, 2, 'F')
-            
-            doc.setFontSize(18)
+            const headerX = logo ? 47 : 14
+            doc.setTextColor(...white)
             doc.setFont('helvetica', 'bold')
-            doc.setTextColor(...s.color)
-            doc.text(s.value, x + boxW / 2, yPos + 11, { align: 'center' })
-
-            doc.setFontSize(7)
+            doc.setFontSize(8)
+            doc.text('MINISTRY OF ALTAR SERVERS', headerX, 13)
+            doc.setFontSize(19)
+            doc.text('Inventory Audit Report', headerX, 23)
             doc.setFont('helvetica', 'normal')
-            doc.setTextColor(...slate400)
-            doc.text(s.label.toUpperCase(), x + boxW / 2, yPos + 18, { align: 'center' })
-        })
+            doc.setFontSize(9)
+            doc.setTextColor(226, 232, 240)
+            doc.text('Holy Spirit Chapel', headerX, 30)
+            doc.setFontSize(7)
+            doc.setTextColor(...gold)
+            doc.text('MAS-HSC  /  EQUIPMENT CONTROL', pageWidth - 14, 13, { align: 'right' })
 
-        yPos += boxH + 12
+            doc.setTextColor(...muted)
+            doc.setFontSize(7)
+            doc.setFont('helvetica', 'bold')
+            doc.text('AUDIT REFERENCE', 14, 50)
+            doc.text('GENERATED', pageWidth - 14, 50, { align: 'right' })
+            doc.setTextColor(...ink)
+            doc.setFontSize(9)
+            doc.text(refNum, 14, 55)
+            doc.setFont('helvetica', 'normal')
+            doc.text(`${dateStr} at ${timeStr}`, pageWidth - 14, 55, { align: 'right' })
 
-        // ────────────────────────────────────────────
-        // 3. FULL INVENTORY TABLE
-        // ────────────────────────────────────────────
-        doc.setTextColor(...slate800)
-        doc.setFontSize(13)
-        doc.setFont('helvetica', 'bold')
-        doc.text('Detailed Audit Results', 14, yPos)
-        yPos += 3
-        doc.setDrawColor(...slate400)
-        doc.setLineWidth(0.3)
-        doc.line(14, yPos, pageWidth - 14, yPos)
-        yPos += 4
+            let yPos = 67
+            doc.setTextColor(...ink)
+            doc.setFont('helvetica', 'bold')
+            doc.setFontSize(12)
+            doc.text('Audit summary', 14, yPos)
+            doc.setDrawColor(...gold)
+            doc.setLineWidth(0.7)
+            doc.line(14, yPos + 3, 36, yPos + 3)
+            doc.setDrawColor(...line)
+            doc.setLineWidth(0.2)
+            doc.line(36, yPos + 3, pageWidth - 14, yPos + 3)
+            yPos += 9
 
-        const tableBody = items.map((item, idx) => {
-            const diff = item.actualQuantity - item.systemQuantity
-            const diffStr = diff === 0 ? '—' : (diff > 0 ? `+${diff}` : `${diff}`)
-            const status = diff === 0 ? '✓ Match' : (diff > 0 ? '▲ Over' : '▼ Under')
-            return [
-                String(idx + 1),
-                item.name,
-                String(item.systemQuantity),
-                String(item.actualQuantity),
-                diffStr,
-                status,
+            const totalUnits = items.reduce((sum, item) => sum + item.actualQuantity, 0)
+            const matchCount = items.filter(item => item.actualQuantity === item.systemQuantity).length
+            const overCount = items.filter(item => item.actualQuantity > item.systemQuantity).length
+            const underCount = items.filter(item => item.actualQuantity < item.systemQuantity).length
+            const boxGap = 3
+            const boxWidth = (pageWidth - 28 - boxGap * 3) / 4
+            const summaryData = [
+                { label: 'ITEMS CHECKED', value: String(items.length), detail: 'inventory lines', color: ink },
+                { label: 'UNITS FOUND', value: String(totalUnits), detail: 'physical count', color: ink },
+                { label: 'MATCHED', value: String(matchCount), detail: 'as recorded', color: green },
+                { label: 'VARIANCES', value: String(discrepancies.length), detail: `${overCount} surplus / ${underCount} shortage`, color: discrepancies.length ? red : green },
             ]
-        })
 
-        autoTable(doc, {
-            startY: yPos,
-            head: [['#', 'Item Name', 'System Qty', 'Actual Qty', 'Diff', 'Status']],
-            body: tableBody,
-            theme: 'grid',
-            styles: { fontSize: 9, cellPadding: 4, lineColor: [226, 232, 240], lineWidth: 0.2 },
-            headStyles: { fillColor: slate800, textColor: white, fontStyle: 'bold', fontSize: 8, halign: 'center' },
-            columnStyles: {
-                0: { halign: 'center', cellWidth: 12 },
-                1: { fontStyle: 'bold' },
-                2: { halign: 'center', cellWidth: 24 },
-                3: { halign: 'center', cellWidth: 24 },
-                4: { halign: 'center', cellWidth: 18 },
-                5: { halign: 'center', cellWidth: 26 },
-            },
-            alternateRowStyles: { fillColor: [248, 250, 252] },
-            didParseCell: (data) => {
-                if (data.section === 'body') {
-                    // Color the Diff column
-                    if (data.column.index === 4) {
-                        const txt = data.cell.text[0]
-                        if (txt.startsWith('+')) {
-                            data.cell.styles.textColor = amber600
-                            data.cell.styles.fontStyle = 'bold'
-                        } else if (txt.startsWith('-')) {
-                            data.cell.styles.textColor = red600
-                            data.cell.styles.fontStyle = 'bold'
-                        } else {
-                            data.cell.styles.textColor = slate400
-                        }
+            summaryData.forEach((summary, index) => {
+                const x = 14 + index * (boxWidth + boxGap)
+                doc.setFillColor(...surface)
+                doc.setDrawColor(...line)
+                doc.setLineWidth(0.2)
+                doc.roundedRect(x, yPos, boxWidth, 25, 1.5, 1.5, 'FD')
+                doc.setFont('helvetica', 'bold')
+                doc.setFontSize(7)
+                doc.setTextColor(...muted)
+                doc.text(summary.label, x + 4, yPos + 6)
+                doc.setFontSize(16)
+                doc.setTextColor(...summary.color)
+                doc.text(summary.value, x + 4, yPos + 15)
+                doc.setFont('helvetica', 'normal')
+                doc.setFontSize(6.5)
+                doc.setTextColor(...subtle)
+                doc.text(summary.detail, x + 4, yPos + 21)
+            })
+
+            yPos += 36
+            doc.setTextColor(...ink)
+            doc.setFont('helvetica', 'bold')
+            doc.setFontSize(12)
+            doc.text('Detailed audit results', 14, yPos)
+            doc.setDrawColor(...gold)
+            doc.setLineWidth(0.7)
+            doc.line(14, yPos + 3, 42, yPos + 3)
+            doc.setDrawColor(...line)
+            doc.setLineWidth(0.2)
+            doc.line(42, yPos + 3, pageWidth - 14, yPos + 3)
+            yPos += 7
+
+            const tableBody = items.map((item, index) => {
+                const difference = item.actualQuantity - item.systemQuantity
+                return [
+                    String(index + 1), item.name, String(item.systemQuantity), String(item.actualQuantity),
+                    difference === 0 ? '--' : difference > 0 ? `+${difference}` : String(difference),
+                    difference === 0 ? 'Match' : difference > 0 ? 'Surplus' : 'Shortage',
+                ]
+            })
+
+            autoTable(doc, {
+                startY: yPos,
+                head: [['#', 'Item name', 'Recorded', 'Found', 'Variance', 'Status']],
+                body: tableBody,
+                theme: 'grid',
+                margin: { left: 14, right: 14, top: 18, bottom: 19 },
+                showHead: 'everyPage',
+                styles: { fontSize: 8.5, cellPadding: 3.2, lineColor: line, lineWidth: 0.2, textColor: ink },
+                headStyles: { fillColor: ink, textColor: white, fontStyle: 'bold', fontSize: 7.5, halign: 'center' },
+                columnStyles: {
+                    0: { halign: 'center', cellWidth: 11, textColor: muted },
+                    1: { fontStyle: 'bold' },
+                    2: { halign: 'center', cellWidth: 24 },
+                    3: { halign: 'center', cellWidth: 24 },
+                    4: { halign: 'center', cellWidth: 20 },
+                    5: { halign: 'center', cellWidth: 25 },
+                },
+                alternateRowStyles: { fillColor: surface },
+                didParseCell: data => {
+                    if (data.section !== 'body') return
+                    if (data.column.index === 4 || data.column.index === 5) {
+                        const value = data.cell.text[0]
+                        data.cell.styles.fontStyle = 'bold'
+                        data.cell.styles.textColor = value.startsWith('-') && value !== '--' || value === 'Shortage'
+                            ? red
+                            : value.startsWith('+') || value === 'Surplus' ? amber : green
                     }
-                    // Color the Status column
-                    if (data.column.index === 5) {
-                        const txt = data.cell.text[0]
-                        if (txt.includes('Over')) {
-                            data.cell.styles.textColor = amber600
-                            data.cell.styles.fontStyle = 'bold'
-                        } else if (txt.includes('Under')) {
-                            data.cell.styles.textColor = red600
-                            data.cell.styles.fontStyle = 'bold'
-                        } else {
-                            data.cell.styles.textColor = green600
-                            data.cell.styles.fontStyle = 'bold'
-                        }
-                    }
+                },
+            })
+
+            const finalTableY = () => (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY
+            let afterTableY = finalTableY() + 12
+
+            if (discrepancies.length > 0) {
+                if (afterTableY > 228) {
+                    doc.addPage()
+                    afterTableY = 20
                 }
-            },
-        })
 
-        // ────────────────────────────────────────────
-        // 4. DISCREPANCIES-ONLY TABLE (if any)
-        // ────────────────────────────────────────────
-        let afterTableY = (doc as any).lastAutoTable.finalY + 12
+                doc.setTextColor(...red)
+                doc.setFont('helvetica', 'bold')
+                doc.setFontSize(12)
+                doc.text('Flagged discrepancies', 14, afterTableY)
+                doc.setDrawColor(...red)
+                doc.setLineWidth(0.7)
+                doc.line(14, afterTableY + 3, 43, afterTableY + 3)
+                doc.setDrawColor(...line)
+                doc.setLineWidth(0.2)
+                doc.line(43, afterTableY + 3, pageWidth - 14, afterTableY + 3)
+                afterTableY += 7
 
-        if (discrepancies.length > 0) {
-            // Check if we need to add a new page
-            if (afterTableY > 240) {
+                const discrepancyRows = discrepancies.map((item, index) => {
+                    const difference = item.actualQuantity - item.systemQuantity
+                    return [String(index + 1), item.name, String(item.systemQuantity), String(item.actualQuantity),
+                        difference > 0 ? `+${difference}` : String(difference),
+                        difference > 0 ? 'Verify surplus source' : 'Investigate shortage']
+                })
+
+                autoTable(doc, {
+                    startY: afterTableY,
+                    head: [['#', 'Item name', 'Recorded', 'Found', 'Variance', 'Recommended action']],
+                    body: discrepancyRows,
+                    theme: 'grid',
+                    margin: { left: 14, right: 14, top: 18, bottom: 19 },
+                    showHead: 'everyPage',
+                    styles: { fontSize: 8.5, cellPadding: 3.2, lineColor: [254, 226, 226], lineWidth: 0.2, textColor: ink },
+                    headStyles: { fillColor: ink, textColor: white, fontStyle: 'bold', fontSize: 7.5, halign: 'center' },
+                    columnStyles: {
+                        0: { halign: 'center', cellWidth: 11, textColor: muted },
+                        1: { fontStyle: 'bold' },
+                        2: { halign: 'center', cellWidth: 23 },
+                        3: { halign: 'center', cellWidth: 23 },
+                        4: { halign: 'center', cellWidth: 19, fontStyle: 'bold' },
+                        5: { cellWidth: 45 },
+                    },
+                    alternateRowStyles: { fillColor: [255, 247, 237] },
+                    didParseCell: data => {
+                        if (data.section === 'body' && data.column.index === 4) {
+                            data.cell.styles.textColor = data.cell.text[0].startsWith('-') ? red : amber
+                        }
+                    },
+                })
+
+                afterTableY = finalTableY() + 12
+            }
+
+            if (afterTableY > 215) {
                 doc.addPage()
                 afterTableY = 20
             }
 
-            doc.setTextColor(...red600)
-            doc.setFontSize(13)
+            doc.setTextColor(...ink)
             doc.setFont('helvetica', 'bold')
-            doc.text('⚠  Flagged Discrepancies', 14, afterTableY)
-            afterTableY += 3
-            doc.setDrawColor(...red600)
-            doc.setLineWidth(0.4)
-            doc.line(14, afterTableY, pageWidth - 14, afterTableY)
-            afterTableY += 4
+            doc.setFontSize(12)
+            doc.text('Verification', 14, afterTableY)
+            doc.setDrawColor(...gold)
+            doc.setLineWidth(0.7)
+            doc.line(14, afterTableY + 3, 34, afterTableY + 3)
+            doc.setDrawColor(...line)
+            doc.setLineWidth(0.2)
+            doc.line(34, afterTableY + 3, pageWidth - 14, afterTableY + 3)
+            afterTableY += 11
 
-            const discBody = discrepancies.map((item, idx) => {
-                const diff = item.actualQuantity - item.systemQuantity
-                const diffStr = diff > 0 ? `+${diff}` : `${diff}`
-                const action = diff > 0 ? 'Verify surplus source' : 'Investigate shortage'
-                return [String(idx + 1), item.name, String(item.systemQuantity), String(item.actualQuantity), diffStr, action]
-            })
-
-            autoTable(doc, {
-                startY: afterTableY,
-                head: [['#', 'Item Name', 'Expected', 'Found', 'Diff', 'Recommended Action']],
-                body: discBody,
-                theme: 'grid',
-                styles: { fontSize: 9, cellPadding: 4, lineColor: [253, 224, 224], lineWidth: 0.2 },
-                headStyles: { fillColor: red600, textColor: white, fontStyle: 'bold', fontSize: 8, halign: 'center' },
-                columnStyles: {
-                    0: { halign: 'center', cellWidth: 12 },
-                    1: { fontStyle: 'bold' },
-                    2: { halign: 'center', cellWidth: 22 },
-                    3: { halign: 'center', cellWidth: 22 },
-                    4: { halign: 'center', cellWidth: 16 },
-                    5: { fontStyle: 'italic' },
-                },
-                alternateRowStyles: { fillColor: [254, 242, 242] },
-                didParseCell: (data) => {
-                    if (data.section === 'body' && data.column.index === 4) {
-                        data.cell.styles.fontStyle = 'bold'
-                        data.cell.styles.textColor = data.cell.text[0].startsWith('-') ? red600 : amber600
-                    }
-                },
-            })
-
-            afterTableY = (doc as any).lastAutoTable.finalY + 12
-        }
-
-        // ────────────────────────────────────────────
-        // 5. SIGNATURE & NOTES BLOCK
-        // ────────────────────────────────────────────
-        if (afterTableY > 240) {
-            doc.addPage()
-            afterTableY = 20
-        }
-
-        doc.setTextColor(...slate800)
-        doc.setFontSize(13)
-        doc.setFont('helvetica', 'bold')
-        doc.text('Verification', 14, afterTableY)
-        afterTableY += 3
-        doc.setDrawColor(...slate400)
-        doc.setLineWidth(0.3)
-        doc.line(14, afterTableY, pageWidth - 14, afterTableY)
-        afterTableY += 10
-
-        doc.setFontSize(9)
-        doc.setFont('helvetica', 'normal')
-        doc.setTextColor(...slate600)
-        doc.text('Notes / Remarks:', 14, afterTableY)
-        afterTableY += 4
-
-        // Ruled lines for handwritten notes
-        doc.setDrawColor(...slate400)
-        doc.setLineWidth(0.15)
-        for (let i = 0; i < 3; i++) {
-            doc.line(14, afterTableY + i * 8, pageWidth - 14, afterTableY + i * 8)
-        }
-        afterTableY += 30
-
-        // Signature lines
-        const sigLineWidth = 70
-        doc.setDrawColor(...slate800)
-        doc.setLineWidth(0.3)
-        doc.line(14, afterTableY, 14 + sigLineWidth, afterTableY)
-        doc.line(pageWidth - 14 - sigLineWidth, afterTableY, pageWidth - 14, afterTableY)
-
-        afterTableY += 5
-        doc.setFontSize(8)
-        doc.setTextColor(...slate600)
-        doc.text('Audited by (Signature & Name)', 14, afterTableY)
-        doc.text('Verified by (Head Coordinator)', pageWidth - 14 - sigLineWidth, afterTableY)
-
-        afterTableY += 4
-        doc.text(`Date: ${dateStr}`, 14, afterTableY)
-        doc.text(`Date: _______________`, pageWidth - 14 - sigLineWidth, afterTableY)
-
-        // ────────────────────────────────────────────
-        // 6. PAGE FOOTER
-        // ────────────────────────────────────────────
-        const pageCount = doc.getNumberOfPages()
-        for (let i = 1; i <= pageCount; i++) {
-            doc.setPage(i)
-            const pageH = doc.internal.pageSize.getHeight()
-            doc.setFillColor(245, 247, 250)
-            doc.rect(0, pageH - 12, pageWidth, 12, 'F')
+            doc.setFont('helvetica', 'bold')
             doc.setFontSize(7)
-            doc.setTextColor(...slate400)
-            doc.text('MAS-HSC Equipment Audit Report — Confidential', 14, pageH - 5)
-            doc.text(`Page ${i} of ${pageCount}`, pageWidth - 14, pageH - 5, { align: 'right' })
-        }
+            doc.setTextColor(...muted)
+            doc.text('NOTES / REMARKS', 14, afterTableY)
+            doc.setDrawColor(...line)
+            doc.setLineWidth(0.25)
+            doc.line(14, afterTableY + 7, pageWidth - 14, afterTableY + 7)
+            doc.line(14, afterTableY + 15, pageWidth - 14, afterTableY + 15)
+            afterTableY += 28
 
-        doc.save(`Audit_Report_${refNum}.pdf`)
-        toast.success("PDF Report Generated!")
+            const signatureWidth = 76
+            const rightSignatureX = pageWidth - 14 - signatureWidth
+            doc.setDrawColor(...ink)
+            doc.setLineWidth(0.3)
+            doc.line(14, afterTableY, 14 + signatureWidth, afterTableY)
+            doc.line(rightSignatureX, afterTableY, pageWidth - 14, afterTableY)
+            doc.setTextColor(...ink)
+            doc.setFont('helvetica', 'bold')
+            doc.setFontSize(9)
+            doc.text(auditedBy || 'Not assigned', 14, afterTableY + 6)
+            doc.text(verifiedBy || 'Not assigned', rightSignatureX, afterTableY + 6)
+            doc.setTextColor(...muted)
+            doc.setFont('helvetica', 'normal')
+            doc.setFontSize(7.5)
+            doc.text('Secretary | Audited by', 14, afterTableY + 11)
+            doc.text('Head Coordinator | Verified by', rightSignatureX, afterTableY + 11)
+            doc.text(`Date: ${dateStr}`, 14, afterTableY + 17)
+            doc.text(`Date: ${dateStr}`, rightSignatureX, afterTableY + 17)
+
+            const pageCount = doc.getNumberOfPages()
+            for (let page = 1; page <= pageCount; page++) {
+                doc.setPage(page)
+                const pageHeight = doc.internal.pageSize.getHeight()
+                doc.setFillColor(...surface)
+                doc.rect(0, pageHeight - 13, pageWidth, 13, 'F')
+                doc.setFillColor(...gold)
+                doc.rect(0, pageHeight - 13, pageWidth, 0.7, 'F')
+                doc.setFont('helvetica', 'normal')
+                doc.setFontSize(7)
+                doc.setTextColor(...muted)
+                doc.text('MAS-HSC Equipment Audit Report', 14, pageHeight - 5)
+                doc.text(`Page ${page} of ${pageCount}`, pageWidth - 14, pageHeight - 5, { align: 'right' })
+            }
+
+            doc.save(`Audit_Report_${refNum}.pdf`)
+            toast.success('PDF report generated')
+        } catch {
+            toast.error('Could not generate the PDF report')
+        } finally {
+            setIsGeneratingPdf(false)
+        }
     }
 
     const handleCompleteAudit = async () => {
@@ -354,8 +374,8 @@ export function AuditFlow({ initialEquipment }: { initialEquipment: any[] }) {
             toast.success(`Audit Complete! ${discrepancies.length} records updated.`)
             router.push('/equipment')
             router.refresh()
-        } catch (error: any) {
-            toast.error(error.message || 'Audit failed')
+        } catch (error: unknown) {
+            toast.error(error instanceof Error ? error.message : 'Audit failed')
         } finally {
             setIsSubmitting(false)
         }
@@ -378,10 +398,14 @@ export function AuditFlow({ initialEquipment }: { initialEquipment: any[] }) {
                 <Button 
                     variant="outline" 
                     onClick={generatePDF}
+                    disabled={isGeneratingPdf}
                     className="w-full sm:w-auto border-accent/20 hover:bg-accent/10 hover:text-accent rounded-xl shadow-sm"
                 >
-                    <Package className="w-4 h-4 mr-2" />
-                    Export PDF Report
+                    {isGeneratingPdf ? (
+                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Generating...</>
+                    ) : (
+                        <><Package className="w-4 h-4 mr-2" /> Export PDF Report</>
+                    )}
                 </Button>
             </header>
 
@@ -389,7 +413,7 @@ export function AuditFlow({ initialEquipment }: { initialEquipment: any[] }) {
                 <CardHeader className="border-b border-border/50 pb-6 flex flex-row items-center justify-between">
                     <div>
                         <CardTitle className="text-xl">Checklist Mode</CardTitle>
-                        <CardDescription>Update "Found Count" to automatically flag discrepancies.</CardDescription>
+                        <CardDescription>Update &quot;Found Count&quot; to automatically flag discrepancies.</CardDescription>
                     </div>
                 </CardHeader>
                 <CardContent className="pt-8">
