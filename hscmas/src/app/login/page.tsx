@@ -143,6 +143,7 @@ export default async function LoginPage() {
                             className="object-contain object-center"
                         />
                         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(241,240,235,0.62)_0%,rgba(241,240,235,0.08)_32%,rgba(8,12,16,0.30)_55%,rgba(8,12,16,0.92)_100%)]" />
+                        <div className="absolute inset-x-0 bottom-0 h-[17%] bg-gradient-to-t from-[#e8e6df] via-[#e8e6df]/90 to-transparent" />
                         <div className="absolute inset-x-0 bottom-0 p-6 text-[#f6f2e8] motion-safe:animate-fade-in sm:p-10 lg:p-14">
                             <p className="mb-5 text-xs font-semibold uppercase tracking-[0.2em] text-[#e3c760]">
                                 Holy Spirit Chapel
@@ -153,7 +154,7 @@ export default async function LoginPage() {
                             <p className="mt-5 max-w-lg text-sm leading-6 text-slate-200 sm:text-base">
                                 The official ministry portal for service, formation, attendance, and the active altar roster.
                             </p>
-                            <p className="mt-8 border-l border-[#d4af37] pl-4 text-sm italic text-[#e8ddba]">
+                            <p className="mt-8 border-l border-[#9a7717] pl-4 text-sm italic text-[#5f4b17]">
                                 Once a Knight, Forever a Knight
                             </p>
                         </div>
