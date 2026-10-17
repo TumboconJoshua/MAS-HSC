@@ -3,10 +3,11 @@
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { FileText, Download, Table } from 'lucide-react'
+import { FileText, Download, Table, Loader2 } from 'lucide-react'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import * as XLSX from 'xlsx'
+import { addPdfFooters, drawPdfHeader, drawPdfSummary, loadPdfLogo, PDF_COLORS } from '@/lib/pdfReport'
 
 interface ServerRecord {
     first_name: string
@@ -23,32 +24,97 @@ interface ServerRecord {
 }
 
 export function ExportReportsModule({ servers }: { servers: ServerRecord[] }) {
-    const exportPDF = () => {
-        const doc = new jsPDF()
+    const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
 
-        doc.text('MAS-HSC Altar Server Vestment Condition Checklist', 14, 15)
-        doc.setFontSize(10)
-        doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 22)
+    const exportPDF = async () => {
+        setIsGeneratingPdf(true)
 
-        const tableData = servers.map(s => {
-            const v = s.vestments || {}
-            return [
-                `${s.first_name} ${s.last_name}`,
-                s.group_name || 'General',
-                `${(v.alb_condition || 'N/A').toUpperCase()} ${v.alb_size ? `(${v.alb_size})` : ''}`,
-                `${(v.cincture_condition || 'N/A').toUpperCase()} ${v.cincture_size ? `(${v.cincture_size})` : ''}`,
-                (v.amice_condition || 'N/A').toUpperCase(),
-                v.updated_at ? new Date(v.updated_at).toLocaleDateString() : 'Unchecked'
-            ]
-        })
+        try {
+            const now = new Date()
+            const dateKey = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
+            const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+            const logo = await loadPdfLogo()
+            const { ink, muted, line, surface, gold, green, amber, red, white } = PDF_COLORS
 
-        autoTable(doc, {
-            startY: 28,
-            head: [['Altar Server', 'Group', 'Alb', 'Cincture', 'Amice', 'Last Checked']],
-            body: tableData,
-        })
+            drawPdfHeader(doc, 'Vestment Condition Report', 'VESTMENT CONTROL', `VST-${dateKey}`, now, logo)
 
-        doc.save(`Server_Vestments_Checklist_${Date.now()}.pdf`)
+            const checked = servers.filter(server => server.vestments).length
+            const ready = servers.filter(server => {
+                const vestments = server.vestments
+                return vestments?.alb_condition === 'good'
+                    && vestments.cincture_condition === 'good'
+                    && vestments.amice_condition === 'good'
+            }).length
+            const attention = servers.filter(server => {
+                const vestments = server.vestments
+                return vestments && [vestments.alb_condition, vestments.cincture_condition, vestments.amice_condition]
+                    .some(condition => condition && condition !== 'good')
+            }).length
+
+            let yPos = drawPdfSummary(doc, [
+                { label: 'ALTAR SERVERS', value: String(servers.length), detail: 'included in report' },
+                { label: 'CHECKED', value: String(checked), detail: 'vestment records', color: green },
+                { label: 'FULLY READY', value: String(ready), detail: 'all items good', color: green },
+                { label: 'NEEDS ACTION', value: String(attention), detail: `${servers.length - checked} unchecked`, color: attention ? red : green },
+            ])
+
+            doc.setTextColor(...ink)
+            doc.setFont('helvetica', 'bold')
+            doc.setFontSize(12)
+            doc.text('Condition checklist', 14, yPos)
+            doc.setDrawColor(...gold)
+            doc.setLineWidth(0.7)
+            doc.line(14, yPos + 3, 39, yPos + 3)
+            doc.setDrawColor(...line)
+            doc.setLineWidth(0.2)
+            doc.line(39, yPos + 3, doc.internal.pageSize.getWidth() - 14, yPos + 3)
+            yPos += 7
+
+            const tableData = servers.map(server => {
+                const vestments = server.vestments || {}
+                return [
+                    `${server.first_name} ${server.last_name}`,
+                    server.group_name || 'General',
+                    `${(vestments.alb_condition || 'N/A').toUpperCase()}${vestments.alb_size ? ` (${vestments.alb_size})` : ''}`,
+                    `${(vestments.cincture_condition || 'N/A').toUpperCase()}${vestments.cincture_size ? ` (${vestments.cincture_size})` : ''}`,
+                    (vestments.amice_condition || 'N/A').toUpperCase(),
+                    vestments.updated_at ? new Date(vestments.updated_at).toLocaleDateString() : 'Unchecked',
+                ]
+            })
+
+            autoTable(doc, {
+                startY: yPos,
+                head: [['Altar server', 'Group', 'Alb', 'Cincture', 'Amice', 'Last checked']],
+                body: tableData,
+                theme: 'grid',
+                margin: { left: 14, right: 14, top: 18, bottom: 19 },
+                showHead: 'everyPage',
+                styles: { fontSize: 8, cellPadding: 3, lineColor: line, lineWidth: 0.2, textColor: ink },
+                headStyles: { fillColor: ink, textColor: white, fontStyle: 'bold', fontSize: 7.5, halign: 'center' },
+                columnStyles: {
+                    0: { fontStyle: 'bold', cellWidth: 39 },
+                    1: { cellWidth: 23 },
+                    2: { halign: 'center', cellWidth: 30 },
+                    3: { halign: 'center', cellWidth: 32 },
+                    4: { halign: 'center', cellWidth: 25 },
+                    5: { halign: 'center', cellWidth: 33 },
+                },
+                alternateRowStyles: { fillColor: surface },
+                didParseCell: data => {
+                    if (data.section !== 'body' || data.column.index < 2 || data.column.index > 4) return
+                    const value = data.cell.text[0]
+                    data.cell.styles.fontStyle = 'bold'
+                    data.cell.styles.textColor = value.includes('LOST') || value.includes('DAMAGED')
+                        ? red
+                        : value.includes('LAUNDRY') ? amber : value.includes('GOOD') ? green : muted
+                },
+            })
+
+            addPdfFooters(doc, 'MAS-HSC Vestment Condition Report')
+            doc.save(`Server_Vestments_Checklist_${Date.now()}.pdf`)
+        } finally {
+            setIsGeneratingPdf(false)
+        }
     }
 
     const exportExcel = () => {
@@ -106,9 +172,12 @@ export function ExportReportsModule({ servers }: { servers: ServerRecord[] }) {
                 <CardDescription>Download full altar server vestment condition reports.</CardDescription>
             </CardHeader>
             <CardContent className="pt-6 flex flex-wrap gap-3">
-                <Button onClick={exportPDF} variant="accent" className="shadow-lg shadow-accent/20">
-                    <FileText className="w-4 h-4 mr-2" />
-                    Export PDF Report
+                <Button onClick={exportPDF} disabled={isGeneratingPdf} variant="accent" className="shadow-lg shadow-accent/20">
+                    {isGeneratingPdf ? (
+                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Generating...</>
+                    ) : (
+                        <><FileText className="w-4 h-4 mr-2" /> Export PDF Report</>
+                    )}
                 </Button>
                 <Button onClick={exportExcel} variant="outline" className="border-border">
                     <Table className="w-4 h-4 mr-2 text-green-600" />

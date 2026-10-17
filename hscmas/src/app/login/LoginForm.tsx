@@ -1,148 +1,125 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { login } from './actions'
 import { Button } from '@/components/ui/button'
-import { Mail, Lock, Loader2, Eye, EyeOff, ShieldCheck, ArrowRight } from 'lucide-react'
-import { toast } from 'react-hot-toast'
+import { AlertCircle, ArrowRight, Eye, EyeOff, Loader2, Lock, Mail, ShieldCheck } from 'lucide-react'
 
 export function LoginForm() {
     const [isPending, setIsPending] = useState(false)
     const [showPassword, setShowPassword] = useState(false)
-    const router = useRouter()
+    const [error, setError] = useState<string | null>(null)
 
     async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault()
+        setError(null)
         setIsPending(true)
 
-        const formData = new FormData(event.currentTarget)
-        
         try {
-            const result = await login(formData)
-            if (result?.error) {
-                toast.error(result.error, {
-                    style: {
-                        background: '#0f172a',
-                        color: '#f8fafc',
-                        border: '1px solid rgba(239, 68, 68, 0.3)',
-                    },
-                    iconTheme: {
-                        primary: '#ef4444',
-                        secondary: '#0f172a',
-                    },
-                })
-                setIsPending(false)
+            const result = await login(new FormData(event.currentTarget))
+            if (result?.error) setError(result.error)
+        } catch (caughtError: unknown) {
+            if (!(caughtError instanceof Error && caughtError.message === 'NEXT_REDIRECT')) {
+                setError('An unexpected error occurred. Please try again.')
             }
-        } catch (error: any) {
-            if (error.message !== 'NEXT_REDIRECT') {
-                toast.error('An unexpected error occurred. Please try again.', {
-                    style: {
-                        background: '#0f172a',
-                        color: '#f8fafc',
-                        border: '1px solid rgba(239, 68, 68, 0.3)',
-                    },
-                })
-                setIsPending(false)
-            }
+        } finally {
+            setIsPending(false)
         }
     }
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-6 text-left">
-            {/* Email Field */}
+        <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-                <label 
-                    htmlFor="email" 
-                    className="block text-[11px] font-bold uppercase tracking-widest text-slate-700 ml-1"
-                >
-                    Email Address
+                <label htmlFor="email" className="block text-sm font-semibold">
+                    Email address
                 </label>
-                <div className="relative group">
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center justify-center text-slate-400 group-focus-within:text-amber-600 transition-colors duration-300 pointer-events-none">
-                        <Mail className="w-4 h-4" />
-                    </div>
+                <div className="relative">
+                    <Mail
+                        className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"
+                        strokeWidth={1.75}
+                        aria-hidden="true"
+                    />
                     <input
                         id="email"
                         name="email"
                         type="email"
-                        placeholder="your.email@example.com"
+                        autoComplete="email"
+                        autoCapitalize="none"
+                        placeholder="name@example.com"
                         required
                         disabled={isPending}
-                        className="w-full pl-11 pr-4 py-3.5 bg-white/90 border border-slate-300 rounded-2xl text-slate-900 placeholder:text-slate-400 text-sm focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed shadow-sm"
+                        aria-invalid={Boolean(error)}
+                        aria-describedby={error ? 'login-error' : undefined}
+                        className="min-h-12 w-full rounded-xl border border-[#17202a]/20 bg-[#f7f6f2] py-3 pl-11 pr-4 text-sm text-[#17202a] outline-none transition-[border-color,box-shadow] placeholder:text-slate-500 focus:border-[#9a7717] focus:ring-2 focus:ring-[#d4af37]/25 disabled:cursor-not-allowed disabled:opacity-60"
                     />
                 </div>
             </div>
 
-            {/* Password Field */}
             <div className="space-y-2">
-                <div className="flex items-center justify-between ml-1">
-                    <label 
-                        htmlFor="password" 
-                        className="block text-[11px] font-bold uppercase tracking-widest text-slate-700"
-                    >
-                        Password
-                    </label>
-                </div>
-                <div className="relative group">
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center justify-center text-slate-400 group-focus-within:text-amber-600 transition-colors duration-300 pointer-events-none">
-                        <Lock className="w-4 h-4" />
-                    </div>
+                <label htmlFor="password" className="block text-sm font-semibold">
+                    Password
+                </label>
+                <div className="relative">
+                    <Lock
+                        className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"
+                        strokeWidth={1.75}
+                        aria-hidden="true"
+                    />
                     <input
                         id="password"
                         name="password"
                         type={showPassword ? 'text' : 'password'}
-                        placeholder="••••••••••••"
+                        autoComplete="current-password"
+                        placeholder="Enter your password"
                         required
                         disabled={isPending}
-                        className="w-full pl-11 pr-12 py-3.5 bg-white/90 border border-slate-300 rounded-2xl text-slate-900 placeholder:text-slate-400 text-sm focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed shadow-sm"
+                        aria-invalid={Boolean(error)}
+                        aria-describedby={error ? 'login-error' : undefined}
+                        className="min-h-12 w-full rounded-xl border border-[#17202a]/20 bg-[#f7f6f2] py-3 pl-11 pr-12 text-sm text-[#17202a] outline-none transition-[border-color,box-shadow] placeholder:text-slate-500 focus:border-[#9a7717] focus:ring-2 focus:ring-[#d4af37]/25 disabled:cursor-not-allowed disabled:opacity-60"
                     />
                     <button
                         type="button"
-                        onClick={() => setShowPassword(!showPassword)}
+                        onClick={() => setShowPassword(current => !current)}
                         disabled={isPending}
                         aria-label={showPassword ? 'Hide password' : 'Show password'}
-                        className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-amber-600 focus:text-amber-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50 rounded-lg transition-colors duration-200"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-2 text-slate-500 transition-colors hover:text-[#85620f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d4af37] disabled:cursor-not-allowed"
                     >
-                        {showPassword ? (
-                            <EyeOff className="w-4 h-4" />
-                        ) : (
-                            <Eye className="w-4 h-4" />
-                        )}
+                        {showPassword ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
                     </button>
                 </div>
             </div>
 
-            {/* Action Buttons */}
-            <div className="pt-3 space-y-4">
+            {error && (
+                <div id="login-error" role="alert" aria-live="polite" className="flex gap-3 rounded-xl border border-red-700/25 bg-red-700/10 px-4 py-3 text-sm text-red-800">
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                    <span>{error}</span>
+                </div>
+            )}
+
+            <div className="space-y-4 pt-1">
                 <Button
                     type="submit"
-                    variant="default"
                     disabled={isPending}
-                    className="w-full h-12 rounded-2xl text-sm font-bold text-white bg-gradient-to-r from-amber-600 via-amber-500 to-amber-700 hover:from-amber-500 hover:to-amber-600 shadow-lg shadow-amber-600/20 transition-all duration-300 active:scale-[0.99] border-none disabled:opacity-70 disabled:cursor-not-allowed group relative overflow-hidden"
+                    className="h-12 w-full rounded-xl border-none bg-[#d4af37] text-sm font-bold text-[#111820] shadow-none transition-[background-color,transform] hover:bg-[#e0c15c] active:translate-y-px focus-visible:ring-[#d4af37] focus-visible:ring-offset-[#e8e6df] disabled:cursor-not-allowed disabled:opacity-65"
                 >
-                    <span className="relative z-10 flex items-center justify-center gap-2">
-                        {isPending ? (
-                            <>
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                                <span>Authenticating...</span>
-                            </>
-                        ) : (
-                            <>
-                                <span>Sign In to Portal</span>
-                                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" />
-                            </>
-                        )}
-                    </span>
-                    <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 pointer-events-none" />
+                    {isPending ? (
+                        <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                            Signing in...
+                        </>
+                    ) : (
+                        <>
+                            Sign in
+                            <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+                        </>
+                    )}
                 </Button>
 
-                <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-500 font-medium pt-1">
-                    <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
-                    <span>Protected Portal Access • HSC-MAS</span>
-                </div>
+                <p className="flex items-center justify-center gap-2 text-xs text-slate-600">
+                    <ShieldCheck className="h-4 w-4 text-[#85620f]" strokeWidth={1.5} aria-hidden="true" />
+                    Protected portal access - HSC-MAS
+                </p>
             </div>
         </form>
     )
 }
-

@@ -3,10 +3,11 @@
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { FileText, Download, Table } from 'lucide-react'
+import { FileText, Download, Table, Loader2 } from 'lucide-react'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import * as XLSX from 'xlsx'
+import { addPdfFooters, drawPdfHeader, drawPdfSummary, loadPdfLogo, PDF_COLORS } from '@/lib/pdfReport'
 
 interface Transaction {
     id: string
@@ -21,6 +22,7 @@ interface Transaction {
 export function ExportFundsModule({ transactions, openingBalance }: { transactions: Transaction[]; openingBalance: number }) {
     const [startDate, setStartDate] = useState('')
     const [endDate, setEndDate] = useState('')
+    const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
 
     const getFilteredTransactions = () => {
         return transactions.filter(t => {
@@ -30,37 +32,87 @@ export function ExportFundsModule({ transactions, openingBalance }: { transactio
         })
     }
 
-    const exportPDF = () => {
-        const data = getFilteredTransactions()
-        const doc = new jsPDF()
+    const exportPDF = async () => {
+        setIsGeneratingPdf(true)
 
-        doc.setFontSize(14)
-        doc.text('MAS-HSC Ministry Funds Financial Report', 14, 15)
-        doc.setFontSize(9)
-        doc.text(`Generated: ${new Date().toLocaleDateString()} | Opening Cash: P${openingBalance.toFixed(2)}`, 14, 22)
+        try {
+            const data = getFilteredTransactions()
+            const totalIncome = data.filter(t => t.type === 'income').reduce((acc, t) => acc + Number(t.amount), 0)
+            const totalExpense = data.filter(t => t.type === 'expense').reduce((acc, t) => acc + Number(t.amount), 0)
+            const closingBalance = openingBalance + totalIncome - totalExpense
+            const formatAmount = (amount: number) => `PHP ${amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            const now = new Date()
+            const dateKey = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
+            const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+            const logo = await loadPdfLogo()
+            const { ink, muted, line, surface, gold, green, red, white } = PDF_COLORS
 
-        const totalIncome = data.filter(t => t.type === 'income').reduce((acc, t) => acc + Number(t.amount), 0)
-        const totalExpense = data.filter(t => t.type === 'expense').reduce((acc, t) => acc + Number(t.amount), 0)
-        const closingBalance = openingBalance + totalIncome - totalExpense
+            drawPdfHeader(doc, 'Treasury Financial Report', 'FINANCIAL CONTROL', `FIN-${dateKey}`, now, logo)
+            doc.setFont('helvetica', 'normal')
+            doc.setFontSize(7.5)
+            doc.setTextColor(...muted)
+            doc.text(`Report period: ${startDate || 'First record'} to ${endDate || 'Latest record'}`, 14, 63)
 
-        doc.text(`Total Income: P${totalIncome.toFixed(2)} | Total Expense: P${totalExpense.toFixed(2)} | Closing Balance: P${closingBalance.toFixed(2)}`, 14, 28)
+            let yPos = drawPdfSummary(doc, [
+                { label: 'OPENING CASH', value: formatAmount(openingBalance), detail: 'starting balance' },
+                { label: 'TOTAL INCOME', value: formatAmount(totalIncome), detail: `${data.filter(t => t.type === 'income').length} entries`, color: green },
+                { label: 'TOTAL EXPENSE', value: formatAmount(totalExpense), detail: `${data.filter(t => t.type === 'expense').length} entries`, color: red },
+                { label: 'CLOSING CASH', value: formatAmount(closingBalance), detail: 'calculated balance', color: closingBalance >= 0 ? green : red },
+            ], 72)
 
-        const tableData = data.map(t => [
-            t.transaction_date,
-            t.type.toUpperCase(),
-            t.category.toUpperCase(),
-            t.description || '—',
-            t.reference || '—',
-            `${t.type === 'income' ? '+' : '-'}P${Number(t.amount).toFixed(2)}`
-        ])
+            doc.setTextColor(...ink)
+            doc.setFont('helvetica', 'bold')
+            doc.setFontSize(12)
+            doc.text('Transaction ledger', 14, yPos)
+            doc.setDrawColor(...gold)
+            doc.setLineWidth(0.7)
+            doc.line(14, yPos + 3, 38, yPos + 3)
+            doc.setDrawColor(...line)
+            doc.setLineWidth(0.2)
+            doc.line(38, yPos + 3, doc.internal.pageSize.getWidth() - 14, yPos + 3)
+            yPos += 7
 
-        autoTable(doc, {
-            startY: 34,
-            head: [['Date', 'Type', 'Category', 'Description', 'Reference', 'Amount']],
-            body: tableData,
-        })
+            const tableData = data.map(transaction => [
+                transaction.transaction_date,
+                transaction.type.toUpperCase(),
+                transaction.category.toUpperCase(),
+                transaction.description || '--',
+                transaction.reference || '--',
+                `${transaction.type === 'income' ? '+' : '-'} ${formatAmount(Number(transaction.amount))}`,
+            ])
 
-        doc.save(`Treasury_Report_${Date.now()}.pdf`)
+            autoTable(doc, {
+                startY: yPos,
+                head: [['Date', 'Type', 'Category', 'Description', 'Reference', 'Amount']],
+                body: tableData,
+                theme: 'grid',
+                margin: { left: 14, right: 14, top: 18, bottom: 19 },
+                showHead: 'everyPage',
+                styles: { fontSize: 8, cellPadding: 3, lineColor: line, lineWidth: 0.2, textColor: ink },
+                headStyles: { fillColor: ink, textColor: white, fontStyle: 'bold', fontSize: 7.5, halign: 'center' },
+                columnStyles: {
+                    0: { halign: 'center', cellWidth: 23 },
+                    1: { halign: 'center', cellWidth: 18, fontStyle: 'bold' },
+                    2: { cellWidth: 28 },
+                    3: { cellWidth: 52 },
+                    4: { cellWidth: 27 },
+                    5: { halign: 'right', cellWidth: 34, fontStyle: 'bold' },
+                },
+                alternateRowStyles: { fillColor: surface },
+                didParseCell: tableCell => {
+                    if (tableCell.section !== 'body') return
+                    const type = data[tableCell.row.index]?.type
+                    if (tableCell.column.index === 1 || tableCell.column.index === 5) {
+                        tableCell.cell.styles.textColor = type === 'income' ? green : red
+                    }
+                },
+            })
+
+            addPdfFooters(doc, 'MAS-HSC Treasury Financial Report')
+            doc.save(`Treasury_Report_${Date.now()}.pdf`)
+        } finally {
+            setIsGeneratingPdf(false)
+        }
     }
 
     const exportExcel = () => {
@@ -69,8 +121,8 @@ export function ExportFundsModule({ transactions, openingBalance }: { transactio
             'Date': t.transaction_date,
             'Type': t.type.toUpperCase(),
             'Category': t.category.toUpperCase(),
-            'Description': t.description || '—',
-            'Reference / OR': t.reference || '—',
+            'Description': t.description || '--',
+            'Reference / OR': t.reference || '--',
             'Amount': t.type === 'income' ? Number(t.amount) : -Number(t.amount)
         }))
 
@@ -100,8 +152,8 @@ export function ExportFundsModule({ transactions, openingBalance }: { transactio
             'Date': t.transaction_date,
             'Type': t.type.toUpperCase(),
             'Category': t.category.toUpperCase(),
-            'Description': t.description || '—',
-            'Reference / OR': t.reference || '—',
+            'Description': t.description || '--',
+            'Reference / OR': t.reference || '--',
             'Amount': t.type === 'income' ? Number(t.amount) : -Number(t.amount)
         }))
 
@@ -150,9 +202,12 @@ export function ExportFundsModule({ transactions, openingBalance }: { transactio
                 </div>
 
                 <div className="pt-4 border-t border-border flex flex-wrap gap-3">
-                    <Button onClick={exportPDF} variant="accent" className="shadow-lg shadow-accent/20">
-                        <FileText className="w-4 h-4 mr-2" />
-                        Export PDF Statement
+                    <Button onClick={exportPDF} disabled={isGeneratingPdf} variant="accent" className="shadow-lg shadow-accent/20">
+                        {isGeneratingPdf ? (
+                            <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Generating...</>
+                        ) : (
+                            <><FileText className="w-4 h-4 mr-2" /> Export PDF Statement</>
+                        )}
                     </Button>
                     <Button onClick={exportExcel} variant="outline" className="border-border">
                         <Table className="w-4 h-4 mr-2 text-green-600" />
