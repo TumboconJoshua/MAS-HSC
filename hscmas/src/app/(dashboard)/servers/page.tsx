@@ -1,17 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import {
     Plus,
-    Search,
-    Filter,
-    MoreVertical,
     Phone,
     Calendar,
     User,
-    ExternalLink,
-    Camera
+    ArrowUpRight
 } from 'lucide-react'
 
 import { ServerFilters } from './ServerFilters'
@@ -70,90 +65,101 @@ export default async function ServersPage({
             <ServerFilters />
 
             {/* Servers Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {servers?.map((server) => (
-                    <Link key={server.id} href={`/servers/${server.id}`}>
-                        <Card className="group relative border border-border shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 bg-card overflow-hidden">
-                            <div className="absolute top-0 left-0 w-1 h-full bg-accent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                            <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-2xl bg-secondary flex items-center justify-center text-accent text-xl font-bold border border-border shadow-inner overflow-hidden">
-                                        {server.avatar_url ? (
-                                            <img src={server.avatar_url} alt="" className="w-full h-full object-cover" />
-                                        ) : (
-                                            <>{server.first_name[0]}{server.last_name[0]}</>
-                                        )}
-                                    </div>
-                                    <div>
-                                        <h3 className="font-bold text-lg leading-tight group-hover:text-accent transition-colors flex items-center gap-2">
-                                            {server.first_name} {server.last_name}
-                                        </h3>
-                                        <div className="flex items-center gap-2 mt-1">
-                                            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider bg-secondary/50 px-2 py-0.5 rounded-full border border-border/50">
-                                                {server.group_name || 'General Group'}
-                                            </p>
-                                            {server.officer_role && (
-                                                <p className="text-[10px] text-indigo-500 font-bold uppercase tracking-wider bg-indigo-500/10 px-2 py-0.5 rounded-full border border-indigo-500/20">
-                                                    {server.officer_role}
-                                                </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {servers?.map((server) => {
+                    const isActive = server.status?.toLowerCase() === 'active'
+                    const joinedDate = server.date_joined
+                        ? new Date(server.date_joined).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
+                        : null
+
+                    return (
+                        <Link
+                            key={server.id}
+                            href={`/servers/${server.id}`}
+                            className="group flex flex-col justify-between p-5 rounded-2xl border border-border/70 bg-card hover:border-foreground/20 hover:bg-muted/15 transition-all duration-200"
+                        >
+                            <div>
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="flex items-center gap-3.5 min-w-0">
+                                        <div className="w-11 h-11 rounded-full bg-secondary/80 border border-border/60 flex items-center justify-center text-xs font-semibold text-foreground shrink-0 overflow-hidden">
+                                            {server.avatar_url ? (
+                                                <img
+                                                    src={server.avatar_url}
+                                                    alt={`${server.first_name} ${server.last_name}`}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            ) : (
+                                                <span>{server.first_name?.[0]}{server.last_name?.[0]}</span>
                                             )}
                                         </div>
+                                        <div className="min-w-0">
+                                            <h3 className="font-semibold text-base text-foreground group-hover:text-accent transition-colors truncate">
+                                                {server.first_name} {server.last_name}
+                                            </h3>
+                                            <div className="flex items-center gap-2 mt-0.5">
+                                                <span className="text-xs text-muted-foreground truncate">
+                                                    {server.group_name || 'General Group'}
+                                                </span>
+                                                {server.officer_role && (
+                                                    <span className="text-[10px] font-medium tracking-wide text-accent bg-accent/10 px-1.5 py-0.5 rounded">
+                                                        {server.officer_role}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
-                                <Button variant="ghost" size="icon" className="text-muted-foreground">
-                                    <MoreVertical className="w-4 h-4" />
-                                </Button>
-                            </CardHeader>
-                            <CardContent className="pt-4 space-y-4">
-                                <div className="grid grid-cols-2 gap-4 text-sm">
-                                    <div className="flex items-center gap-2 text-muted-foreground">
-                                        <Phone className="w-3.5 h-3.5" />
-                                        <span className="truncate">{server.contact_number || 'N/A'}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 text-muted-foreground justify-end">
-                                        <Calendar className="w-3.5 h-3.5" />
-                                        <span>{new Date(server.date_joined).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}</span>
-                                    </div>
-                                </div>
 
-                                <div className="pt-4 flex items-center justify-between border-t border-border/50">
-                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-sm ${server.status === 'active'
-                                            ? 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400'
-                                            : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800'
-                                        }`}>
-                                        <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${server.status === 'active' ? 'bg-green-500' : 'bg-zinc-400'
-                                            }`}></span>
-                                        {server.status}
+                                    <div className="text-muted-foreground/30 group-hover:text-foreground group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0 mt-0.5">
+                                        <ArrowUpRight className="w-4 h-4" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="pt-4 mt-4 border-t border-border/40 flex items-center justify-between text-xs text-muted-foreground">
+                                <div className="flex items-center gap-1.5 font-medium">
+                                    <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-muted-foreground/40'}`} />
+                                    <span className={isActive ? 'text-foreground/90' : 'text-muted-foreground capitalize'}>
+                                        {isActive ? 'Active' : server.status || 'Inactive'}
                                     </span>
-
-                                    <div className="text-accent opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
-                                        <ExternalLink className="w-4 h-4" />
-                                    </div>
                                 </div>
-                            </CardContent>
-                        </Card>
-                    </Link>
-                ))}
+
+                                <div className="flex items-center gap-3 text-muted-foreground/75">
+                                    {server.contact_number && (
+                                        <span className="flex items-center gap-1.5">
+                                            <Phone className="w-3 h-3 opacity-60 shrink-0" />
+                                            <span className="truncate max-w-[120px]">{server.contact_number}</span>
+                                        </span>
+                                    )}
+                                    {joinedDate && (
+                                        <span className="flex items-center gap-1.5 shrink-0">
+                                            <Calendar className="w-3 h-3 opacity-60" />
+                                            <span>{joinedDate}</span>
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        </Link>
+                    )
+                })}
             </div>
 
             {/* Empty State */}
             {servers?.length === 0 && (
-                <Card className="border-dashed border-2 bg-transparent">
-                    <CardContent className="flex flex-col items-center justify-center py-20 text-center">
-                        <div className="w-16 h-16 rounded-3xl bg-secondary flex items-center justify-center mb-4">
-                            <User className="w-8 h-8 text-muted-foreground" />
-                        </div>
-                        <h3 className="text-xl font-bold">No servers registered</h3>
-                        <p className="text-muted-foreground max-w-xs mt-2">
-                            Getting started is easy. Add your first altar server to begin managing your ministry.
-                        </p>
-                        <Link href="/servers/new" className="mt-6">
-                            <Button variant="accent">
-                                Create First Profile
-                            </Button>
-                        </Link>
-                    </CardContent>
-                </Card>
+                <div className="rounded-2xl border border-dashed border-border p-12 text-center bg-card/40">
+                    <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center mx-auto mb-4 text-muted-foreground">
+                        <User className="w-6 h-6" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground">No servers registered</h3>
+                    <p className="text-sm text-muted-foreground max-w-sm mx-auto mt-1">
+                        Getting started is easy. Add your first altar server to begin managing your ministry.
+                    </p>
+                    <Link href="/servers/new" className="inline-block mt-5">
+                        <Button variant="accent">
+                            <Plus className="w-4 h-4 mr-2" />
+                            Create First Profile
+                        </Button>
+                    </Link>
+                </div>
             )}
         </div>
     )
