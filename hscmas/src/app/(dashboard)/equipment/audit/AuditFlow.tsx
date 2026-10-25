@@ -10,6 +10,7 @@ import { submitAudit } from './actions'
 import { toast } from 'react-hot-toast'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import { addPdfFooters, drawPdfHeader, drawPdfSectionTitle, drawPdfSummary, loadPdfHeaderAssets, PDF_COLORS } from '@/lib/pdfReport'
 
 interface AuditItem {
     id: string
@@ -23,13 +24,6 @@ interface EquipmentRecord {
     name: string
     quantity: number
 }
-
-const loadLogo = () => new Promise<HTMLImageElement>((resolve, reject) => {
-    const image = new Image()
-    image.onload = () => resolve(image)
-    image.onerror = () => reject(new Error('Logo could not be loaded'))
-    image.src = '/images/MINISTRY OF ALTAR SERVER - HSC.png'
-})
 
 export function AuditFlow({
     initialEquipment,
@@ -74,121 +68,35 @@ export function AuditFlow({
         setIsGeneratingPdf(true)
 
         try {
-            let logo: HTMLImageElement | null = null
-            try {
-                logo = await loadLogo()
-            } catch {
-                // The report remains usable if the optional crest cannot be loaded.
-            }
-
             const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
             const pageWidth = doc.internal.pageSize.getWidth()
             const now = new Date()
             const dateStr = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-            const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
             const refNum = `AUD-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
+            const headerAssets = await loadPdfHeaderAssets()
+            const { ink, muted, line, surface, white } = PDF_COLORS
 
-            const ink: [number, number, number] = [30, 41, 59]
-            const muted: [number, number, number] = [100, 116, 139]
-            const subtle: [number, number, number] = [148, 163, 184]
-            const line: [number, number, number] = [226, 232, 240]
-            const surface: [number, number, number] = [248, 250, 252]
-            const gold: [number, number, number] = [212, 175, 55]
-            const green: [number, number, number] = [22, 101, 52]
-            const amber: [number, number, number] = [180, 83, 9]
-            const red: [number, number, number] = [185, 28, 28]
-            const white: [number, number, number] = [255, 255, 255]
-
-            doc.setFillColor(...ink)
-            doc.rect(0, 0, pageWidth, 42, 'F')
-            doc.setFillColor(...gold)
-            doc.rect(0, 40, pageWidth, 2, 'F')
-
-            if (logo) doc.addImage(logo, 'PNG', 14, 7, 27, 27)
-
-            const headerX = logo ? 47 : 14
-            doc.setTextColor(...white)
-            doc.setFont('helvetica', 'bold')
-            doc.setFontSize(8)
-            doc.text('MINISTRY OF ALTAR SERVERS', headerX, 13)
-            doc.setFontSize(19)
-            doc.text('Inventory Audit Report', headerX, 23)
-            doc.setFont('helvetica', 'normal')
-            doc.setFontSize(9)
-            doc.setTextColor(226, 232, 240)
-            doc.text('Holy Spirit Chapel', headerX, 30)
-            doc.setFontSize(7)
-            doc.setTextColor(...gold)
-            doc.text('MAS-HSC  /  EQUIPMENT CONTROL', pageWidth - 14, 13, { align: 'right' })
-
-            doc.setTextColor(...muted)
-            doc.setFontSize(7)
-            doc.setFont('helvetica', 'bold')
-            doc.text('AUDIT REFERENCE', 14, 50)
-            doc.text('GENERATED', pageWidth - 14, 50, { align: 'right' })
-            doc.setTextColor(...ink)
-            doc.setFontSize(9)
-            doc.text(refNum, 14, 55)
-            doc.setFont('helvetica', 'normal')
-            doc.text(`${dateStr} at ${timeStr}`, pageWidth - 14, 55, { align: 'right' })
-
-            let yPos = 67
-            doc.setTextColor(...ink)
-            doc.setFont('helvetica', 'bold')
-            doc.setFontSize(12)
-            doc.text('Audit summary', 14, yPos)
-            doc.setDrawColor(...gold)
-            doc.setLineWidth(0.7)
-            doc.line(14, yPos + 3, 36, yPos + 3)
-            doc.setDrawColor(...line)
-            doc.setLineWidth(0.2)
-            doc.line(36, yPos + 3, pageWidth - 14, yPos + 3)
-            yPos += 9
+            const headerEndY = drawPdfHeader(
+                doc,
+                'Inventory Audit Report',
+                'EQUIPMENT CONTROL',
+                refNum,
+                now,
+                headerAssets,
+            )
 
             const totalUnits = items.reduce((sum, item) => sum + item.actualQuantity, 0)
             const matchCount = items.filter(item => item.actualQuantity === item.systemQuantity).length
             const overCount = items.filter(item => item.actualQuantity > item.systemQuantity).length
             const underCount = items.filter(item => item.actualQuantity < item.systemQuantity).length
-            const boxGap = 3
-            const boxWidth = (pageWidth - 28 - boxGap * 3) / 4
-            const summaryData = [
-                { label: 'ITEMS CHECKED', value: String(items.length), detail: 'inventory lines', color: ink },
-                { label: 'UNITS FOUND', value: String(totalUnits), detail: 'physical count', color: ink },
-                { label: 'MATCHED', value: String(matchCount), detail: 'as recorded', color: green },
-                { label: 'VARIANCES', value: String(discrepancies.length), detail: `${overCount} surplus / ${underCount} shortage`, color: discrepancies.length ? red : green },
-            ]
+            let yPos = drawPdfSummary(doc, [
+                { label: 'ITEMS CHECKED', value: String(items.length), detail: 'inventory lines' },
+                { label: 'UNITS FOUND', value: String(totalUnits), detail: 'physical count' },
+                { label: 'MATCHED', value: String(matchCount), detail: 'as recorded' },
+                { label: 'VARIANCES', value: String(discrepancies.length), detail: `${overCount} surplus / ${underCount} shortage` },
+            ], headerEndY)
 
-            summaryData.forEach((summary, index) => {
-                const x = 14 + index * (boxWidth + boxGap)
-                doc.setFillColor(...surface)
-                doc.setDrawColor(...line)
-                doc.setLineWidth(0.2)
-                doc.roundedRect(x, yPos, boxWidth, 25, 1.5, 1.5, 'FD')
-                doc.setFont('helvetica', 'bold')
-                doc.setFontSize(7)
-                doc.setTextColor(...muted)
-                doc.text(summary.label, x + 4, yPos + 6)
-                doc.setFontSize(16)
-                doc.setTextColor(...summary.color)
-                doc.text(summary.value, x + 4, yPos + 15)
-                doc.setFont('helvetica', 'normal')
-                doc.setFontSize(6.5)
-                doc.setTextColor(...subtle)
-                doc.text(summary.detail, x + 4, yPos + 21)
-            })
-
-            yPos += 36
-            doc.setTextColor(...ink)
-            doc.setFont('helvetica', 'bold')
-            doc.setFontSize(12)
-            doc.text('Detailed audit results', 14, yPos)
-            doc.setDrawColor(...gold)
-            doc.setLineWidth(0.7)
-            doc.line(14, yPos + 3, 42, yPos + 3)
-            doc.setDrawColor(...line)
-            doc.setLineWidth(0.2)
-            doc.line(42, yPos + 3, pageWidth - 14, yPos + 3)
-            yPos += 7
+            yPos = drawPdfSectionTitle(doc, 'Detailed audit results', yPos)
 
             const tableBody = items.map((item, index) => {
                 const difference = item.actualQuantity - item.systemQuantity
@@ -220,11 +128,8 @@ export function AuditFlow({
                 didParseCell: data => {
                     if (data.section !== 'body') return
                     if (data.column.index === 4 || data.column.index === 5) {
-                        const value = data.cell.text[0]
                         data.cell.styles.fontStyle = 'bold'
-                        data.cell.styles.textColor = value.startsWith('-') && value !== '--' || value === 'Shortage'
-                            ? red
-                            : value.startsWith('+') || value === 'Surplus' ? amber : green
+                        data.cell.styles.textColor = ink
                     }
                 },
             })
@@ -238,17 +143,7 @@ export function AuditFlow({
                     afterTableY = 20
                 }
 
-                doc.setTextColor(...red)
-                doc.setFont('helvetica', 'bold')
-                doc.setFontSize(12)
-                doc.text('Flagged discrepancies', 14, afterTableY)
-                doc.setDrawColor(...red)
-                doc.setLineWidth(0.7)
-                doc.line(14, afterTableY + 3, 43, afterTableY + 3)
-                doc.setDrawColor(...line)
-                doc.setLineWidth(0.2)
-                doc.line(43, afterTableY + 3, pageWidth - 14, afterTableY + 3)
-                afterTableY += 7
+                afterTableY = drawPdfSectionTitle(doc, 'Flagged discrepancies', afterTableY)
 
                 const discrepancyRows = discrepancies.map((item, index) => {
                     const difference = item.actualQuantity - item.systemQuantity
@@ -264,7 +159,7 @@ export function AuditFlow({
                     theme: 'grid',
                     margin: { left: 14, right: 14, top: 18, bottom: 19 },
                     showHead: 'everyPage',
-                    styles: { fontSize: 8.5, cellPadding: 3.2, lineColor: [254, 226, 226], lineWidth: 0.2, textColor: ink },
+                    styles: { fontSize: 8.5, cellPadding: 3.2, lineColor: line, lineWidth: 0.2, textColor: ink },
                     headStyles: { fillColor: ink, textColor: white, fontStyle: 'bold', fontSize: 7.5, halign: 'center' },
                     columnStyles: {
                         0: { halign: 'center', cellWidth: 11, textColor: muted },
@@ -274,12 +169,7 @@ export function AuditFlow({
                         4: { halign: 'center', cellWidth: 19, fontStyle: 'bold' },
                         5: { cellWidth: 45 },
                     },
-                    alternateRowStyles: { fillColor: [255, 247, 237] },
-                    didParseCell: data => {
-                        if (data.section === 'body' && data.column.index === 4) {
-                            data.cell.styles.textColor = data.cell.text[0].startsWith('-') ? red : amber
-                        }
-                    },
+                    alternateRowStyles: { fillColor: surface },
                 })
 
                 afterTableY = finalTableY() + 12
@@ -290,17 +180,7 @@ export function AuditFlow({
                 afterTableY = 20
             }
 
-            doc.setTextColor(...ink)
-            doc.setFont('helvetica', 'bold')
-            doc.setFontSize(12)
-            doc.text('Verification', 14, afterTableY)
-            doc.setDrawColor(...gold)
-            doc.setLineWidth(0.7)
-            doc.line(14, afterTableY + 3, 34, afterTableY + 3)
-            doc.setDrawColor(...line)
-            doc.setLineWidth(0.2)
-            doc.line(34, afterTableY + 3, pageWidth - 14, afterTableY + 3)
-            afterTableY += 11
+            afterTableY = drawPdfSectionTitle(doc, 'Verification', afterTableY) + 4
 
             doc.setFont('helvetica', 'bold')
             doc.setFontSize(7)
@@ -331,20 +211,7 @@ export function AuditFlow({
             doc.text(`Date: ${dateStr}`, 14, afterTableY + 17)
             doc.text(`Date: ${dateStr}`, rightSignatureX, afterTableY + 17)
 
-            const pageCount = doc.getNumberOfPages()
-            for (let page = 1; page <= pageCount; page++) {
-                doc.setPage(page)
-                const pageHeight = doc.internal.pageSize.getHeight()
-                doc.setFillColor(...surface)
-                doc.rect(0, pageHeight - 13, pageWidth, 13, 'F')
-                doc.setFillColor(...gold)
-                doc.rect(0, pageHeight - 13, pageWidth, 0.7, 'F')
-                doc.setFont('helvetica', 'normal')
-                doc.setFontSize(7)
-                doc.setTextColor(...muted)
-                doc.text('MAS-HSC Equipment Audit Report', 14, pageHeight - 5)
-                doc.text(`Page ${page} of ${pageCount}`, pageWidth - 14, pageHeight - 5, { align: 'right' })
-            }
+            addPdfFooters(doc, 'MAS-HSC Equipment Audit Report')
 
             doc.save(`Audit_Report_${refNum}.pdf`)
             toast.success('PDF report generated')

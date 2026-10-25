@@ -7,7 +7,7 @@ import { FileText, Download, Table, Loader2 } from 'lucide-react'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import * as XLSX from 'xlsx'
-import { addPdfFooters, drawPdfHeader, drawPdfSummary, loadPdfLogo, PDF_COLORS } from '@/lib/pdfReport'
+import { addPdfFooters, drawPdfHeader, drawPdfSectionTitle, drawPdfSummary, loadPdfHeaderAssets, PDF_COLORS } from '@/lib/pdfReport'
 
 interface ServerRecord {
     first_name: string
@@ -33,10 +33,10 @@ export function ExportReportsModule({ servers }: { servers: ServerRecord[] }) {
             const now = new Date()
             const dateKey = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
             const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-            const logo = await loadPdfLogo()
-            const { ink, muted, line, surface, gold, green, amber, red, white } = PDF_COLORS
+            const headerAssets = await loadPdfHeaderAssets()
+            const { ink, muted, line, surface, white } = PDF_COLORS
 
-            drawPdfHeader(doc, 'Vestment Condition Report', 'VESTMENT CONTROL', `VST-${dateKey}`, now, logo)
+            const headerEndY = drawPdfHeader(doc, 'Vestment Condition Report', 'VESTMENT CONTROL', `VST-${dateKey}`, now, headerAssets)
 
             const checked = servers.filter(server => server.vestments).length
             const ready = servers.filter(server => {
@@ -53,22 +53,12 @@ export function ExportReportsModule({ servers }: { servers: ServerRecord[] }) {
 
             let yPos = drawPdfSummary(doc, [
                 { label: 'ALTAR SERVERS', value: String(servers.length), detail: 'included in report' },
-                { label: 'CHECKED', value: String(checked), detail: 'vestment records', color: green },
-                { label: 'FULLY READY', value: String(ready), detail: 'all items good', color: green },
-                { label: 'NEEDS ACTION', value: String(attention), detail: `${servers.length - checked} unchecked`, color: attention ? red : green },
-            ])
+                { label: 'CHECKED', value: String(checked), detail: 'vestment records' },
+                { label: 'FULLY READY', value: String(ready), detail: 'all items good' },
+                { label: 'NEEDS ACTION', value: String(attention), detail: `${servers.length - checked} unchecked` },
+            ], headerEndY)
 
-            doc.setTextColor(...ink)
-            doc.setFont('helvetica', 'bold')
-            doc.setFontSize(12)
-            doc.text('Condition checklist', 14, yPos)
-            doc.setDrawColor(...gold)
-            doc.setLineWidth(0.7)
-            doc.line(14, yPos + 3, 39, yPos + 3)
-            doc.setDrawColor(...line)
-            doc.setLineWidth(0.2)
-            doc.line(39, yPos + 3, doc.internal.pageSize.getWidth() - 14, yPos + 3)
-            yPos += 7
+            yPos = drawPdfSectionTitle(doc, 'Condition checklist', yPos)
 
             const tableData = servers.map(server => {
                 const vestments = server.vestments || {}
@@ -104,9 +94,7 @@ export function ExportReportsModule({ servers }: { servers: ServerRecord[] }) {
                     if (data.section !== 'body' || data.column.index < 2 || data.column.index > 4) return
                     const value = data.cell.text[0]
                     data.cell.styles.fontStyle = 'bold'
-                    data.cell.styles.textColor = value.includes('LOST') || value.includes('DAMAGED')
-                        ? red
-                        : value.includes('LAUNDRY') ? amber : value.includes('GOOD') ? green : muted
+                    data.cell.styles.textColor = value === 'N/A' ? muted : ink
                 },
             })
 

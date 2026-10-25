@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { FileDown, Loader2 } from 'lucide-react'
 import { getAttendanceReportData } from './actions'
 import { toast } from 'react-hot-toast'
+import { addPdfFooters, drawPdfHeader, drawPdfSectionTitle, loadPdfHeaderAssets, PDF_COLORS } from '@/lib/pdfReport'
 
 const MONTH_NAMES = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -40,39 +41,31 @@ export function ReportGenerator({ reportStartMonth, reportEndMonth, reportYear }
             const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
             const startMonthLabel = MONTH_NAMES[reportStartMonth - 1]
             const endMonthLabel = MONTH_NAMES[reportEndMonth - 1]
+            const now = new Date()
+            const dateKey = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
+            const headerAssets = await loadPdfHeaderAssets()
+            const { ink, muted, line, surface, white } = PDF_COLORS
             
             const monthRangeLabel = startMonthLabel === endMonthLabel 
                 ? startMonthLabel 
                 : `${startMonthLabel} to ${endMonthLabel}`
 
             // ── Header ──────────────────────────────────────────────────────
-            doc.setFillColor(30, 30, 35)
-            doc.rect(0, 0, 210, 28, 'F')
-
-            doc.setFont('helvetica', 'bold')
-            doc.setFontSize(14)
-            doc.setTextColor(212, 175, 55) // accent gold
-            doc.text('HOLY SPIRIT CHAPEL', 14, 11)
-
-            doc.setFontSize(9)
-            doc.setTextColor(180, 180, 180)
-            doc.setFont('helvetica', 'normal')
-            doc.text('Ministry of Altar Servers', 14, 17)
-
-            doc.setFont('helvetica', 'bold')
-            doc.setFontSize(13)
-            doc.setTextColor(255, 255, 255)
-            doc.text(`Attendance Report — ${monthRangeLabel} ${reportYear}`, 14, 24)
-
-            // Total masses badge (top-right)
-            doc.setFontSize(8)
-            doc.setTextColor(212, 175, 55)
-            doc.text(
-                `Total Masses This Month: ${totalMassesInMonth}`,
-                196,
-                24,
-                { align: 'right' }
+            const headerEndY = drawPdfHeader(
+                doc,
+                'Attendance Report',
+                'ATTENDANCE CONTROL',
+                `ATT-${dateKey}`,
+                now,
+                headerAssets,
             )
+
+            doc.setFont('helvetica', 'normal')
+            doc.setFontSize(8)
+            doc.setTextColor(...muted)
+            doc.text(`Report period: ${monthRangeLabel} ${reportYear}`, 14, headerEndY)
+            doc.text(`Total masses: ${totalMassesInMonth}`, 196, headerEndY, { align: 'right' })
+            const tableStartY = drawPdfSectionTitle(doc, 'Attendance register', headerEndY + 9)
 
             // ── Table ────────────────────────────────────────────────────────
             const tableRows = servers.map((s, i) => [
@@ -89,19 +82,24 @@ export function ReportGenerator({ reportStartMonth, reportEndMonth, reportYear }
             ])
 
             autoTable(doc, {
-                startY: 32,
+                startY: tableStartY,
                 head: [['No. #', 'Full Name', 'Group', 'Service', 'Present', 'Late', 'Excused', 'Absent', 'Total Masses', 'Rate']],
                 body: tableRows,
                 theme: 'grid',
+                margin: { left: 14, right: 14, top: 18, bottom: 19 },
+                showHead: 'everyPage',
                 styles: {
                     font: 'helvetica',
                     fontSize: 8,
                     cellPadding: 3,
                     valign: 'middle',
+                    lineColor: line,
+                    lineWidth: 0.2,
+                    textColor: ink,
                 },
                 headStyles: {
-                    fillColor: [30, 30, 35],
-                    textColor: [212, 175, 55],
+                    fillColor: ink,
+                    textColor: white,
                     fontStyle: 'bold',
                     halign: 'center',
                 },
@@ -117,43 +115,18 @@ export function ReportGenerator({ reportStartMonth, reportEndMonth, reportYear }
                     8: { halign: 'center', cellWidth: 18 },
                     9: { halign: 'center', cellWidth: 14, fontStyle: 'bold' },
                 },
-                // Highlight rows with 100% rate in soft green
                 didParseCell: (data) => {
                     if (data.section === 'body' && data.column.index === 9) {
-                        const rate = parseInt((data.cell.raw as string).replace('%', ''))
-                        if (rate === 100) {
-                            data.cell.styles.textColor = [34, 197, 94]
-                            data.cell.styles.fontStyle = 'bold'
-                        } else if (rate === 0) {
-                            data.cell.styles.textColor = [239, 68, 68]
-                        }
+                        data.cell.styles.fontStyle = 'bold'
                     }
                 },
                 alternateRowStyles: {
-                    fillColor: [245, 245, 248],
+                    fillColor: surface,
                 },
             })
 
             // ── Footer ────────────────────────────────────────────────────────
-            const pageCount = (doc as any).internal.getNumberOfPages()
-            for (let i = 1; i <= pageCount; i++) {
-                doc.setPage(i)
-                const pageHeight = doc.internal.pageSize.getHeight()
-                doc.setFontSize(7)
-                doc.setTextColor(160, 160, 160)
-                doc.setFont('helvetica', 'normal')
-                doc.text(
-                    `Generated on ${new Date().toLocaleString('en-PH', { dateStyle: 'long', timeStyle: 'short' })}`,
-                    14,
-                    pageHeight - 6
-                )
-                doc.text(
-                    `Page ${i} of ${pageCount}`,
-                    196,
-                    pageHeight - 6,
-                    { align: 'right' }
-                )
-            }
+            addPdfFooters(doc, 'MAS-HSC Attendance Report')
 
             // ── Download ─────────────────────────────────────────────────────
             const filenameLabel = startMonthLabel === endMonthLabel

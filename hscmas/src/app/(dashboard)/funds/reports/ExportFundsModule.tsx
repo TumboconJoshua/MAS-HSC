@@ -7,7 +7,7 @@ import { FileText, Download, Table, Loader2 } from 'lucide-react'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import * as XLSX from 'xlsx'
-import { addPdfFooters, drawPdfHeader, drawPdfSummary, loadPdfLogo, PDF_COLORS } from '@/lib/pdfReport'
+import { addPdfFooters, drawPdfHeader, drawPdfSectionTitle, drawPdfSummary, loadPdfHeaderAssets, PDF_COLORS } from '@/lib/pdfReport'
 
 interface Transaction {
     id: string
@@ -44,33 +44,23 @@ export function ExportFundsModule({ transactions, openingBalance }: { transactio
             const now = new Date()
             const dateKey = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
             const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-            const logo = await loadPdfLogo()
-            const { ink, muted, line, surface, gold, green, red, white } = PDF_COLORS
+            const headerAssets = await loadPdfHeaderAssets()
+            const { ink, muted, line, surface, white } = PDF_COLORS
 
-            drawPdfHeader(doc, 'Treasury Financial Report', 'FINANCIAL CONTROL', `FIN-${dateKey}`, now, logo)
+            const headerEndY = drawPdfHeader(doc, 'Treasury Financial Report', 'FINANCIAL CONTROL', `FIN-${dateKey}`, now, headerAssets)
             doc.setFont('helvetica', 'normal')
             doc.setFontSize(7.5)
             doc.setTextColor(...muted)
-            doc.text(`Report period: ${startDate || 'First record'} to ${endDate || 'Latest record'}`, 14, 63)
+            doc.text(`Report period: ${startDate || 'First record'} to ${endDate || 'Latest record'}`, 14, headerEndY)
 
             let yPos = drawPdfSummary(doc, [
                 { label: 'OPENING CASH', value: formatAmount(openingBalance), detail: 'starting balance' },
-                { label: 'TOTAL INCOME', value: formatAmount(totalIncome), detail: `${data.filter(t => t.type === 'income').length} entries`, color: green },
-                { label: 'TOTAL EXPENSE', value: formatAmount(totalExpense), detail: `${data.filter(t => t.type === 'expense').length} entries`, color: red },
-                { label: 'CLOSING CASH', value: formatAmount(closingBalance), detail: 'calculated balance', color: closingBalance >= 0 ? green : red },
-            ], 72)
+                { label: 'TOTAL INCOME', value: `+ ${formatAmount(totalIncome)}`, detail: `${data.filter(t => t.type === 'income').length} entries` },
+                { label: 'TOTAL EXPENSE', value: `- ${formatAmount(totalExpense)}`, detail: `${data.filter(t => t.type === 'expense').length} entries` },
+                { label: 'CLOSING CASH', value: formatAmount(closingBalance), detail: 'calculated balance' },
+            ], headerEndY + 9)
 
-            doc.setTextColor(...ink)
-            doc.setFont('helvetica', 'bold')
-            doc.setFontSize(12)
-            doc.text('Transaction ledger', 14, yPos)
-            doc.setDrawColor(...gold)
-            doc.setLineWidth(0.7)
-            doc.line(14, yPos + 3, 38, yPos + 3)
-            doc.setDrawColor(...line)
-            doc.setLineWidth(0.2)
-            doc.line(38, yPos + 3, doc.internal.pageSize.getWidth() - 14, yPos + 3)
-            yPos += 7
+            yPos = drawPdfSectionTitle(doc, 'Transaction ledger', yPos)
 
             const tableData = data.map(transaction => [
                 transaction.transaction_date,
@@ -99,13 +89,6 @@ export function ExportFundsModule({ transactions, openingBalance }: { transactio
                     5: { halign: 'right', cellWidth: 34, fontStyle: 'bold' },
                 },
                 alternateRowStyles: { fillColor: surface },
-                didParseCell: tableCell => {
-                    if (tableCell.section !== 'body') return
-                    const type = data[tableCell.row.index]?.type
-                    if (tableCell.column.index === 1 || tableCell.column.index === 5) {
-                        tableCell.cell.styles.textColor = type === 'income' ? green : red
-                    }
-                },
             })
 
             addPdfFooters(doc, 'MAS-HSC Treasury Financial Report')
