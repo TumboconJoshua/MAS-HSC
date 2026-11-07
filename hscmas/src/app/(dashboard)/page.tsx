@@ -300,97 +300,99 @@ export default async function DashboardPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                 {/* 1. Server of the Month Recognition (Column 1) */}
-                <Card className="border border-accent/30 shadow-2xl bg-card rounded-[2.5rem] overflow-hidden relative group/award flex flex-col h-full">
-                    <div className="absolute inset-0 z-0 opacity-20 group-hover:opacity-30 transition-opacity duration-700">
-                         <img 
-                            src="/images/award_bg.png" 
-                            alt="" 
-                            className="w-full h-full object-cover"
-                         />
-                    </div>
-                    <div className="absolute inset-0 bg-gradient-to-br from-accent/10 via-transparent to-background/80 z-0"></div>
-                    
-                    <CardHeader className="relative z-10 pb-2 flex flex-row items-center justify-between">
-                        <div>
-                            <CardTitle className="text-sm font-bold uppercase tracking-widest text-accent flex items-center gap-2">
-                                <Trophy className="w-4 h-4" />
-                                Award
-                            </CardTitle>
-                            <CardDescription className="font-bold text-foreground/80 mt-1 uppercase text-[10px] tracking-tighter">
-                                Server of the Month {isFallbackPeriod ? '(Recent)' : ''}
-                            </CardDescription>
+                <Link href="/servers/stats" className="block h-full group/cardLink focus:outline-none focus:ring-2 focus:ring-accent/50 rounded-[2.5rem]">
+                    <Card className="border border-accent/30 shadow-2xl bg-card rounded-[2.5rem] overflow-hidden relative group/award flex flex-col h-full hover:border-accent/60 transition-all duration-300 hover:shadow-accent/5">
+                        <div className="absolute inset-0 z-0 opacity-20 group-hover/award:opacity-30 transition-opacity duration-700">
+                             <img 
+                                src="/images/award_bg.png" 
+                                alt="" 
+                                className="w-full h-full object-cover"
+                             />
                         </div>
-                        <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center border border-accent/30">
-                            <Star className="w-5 h-5 text-accent fill-accent" />
-                        </div>
-                    </CardHeader>
-
-                    <CardContent className="relative z-10 pt-4 flex flex-col items-center text-center pb-8 flex-1 justify-center">
-                        {topServer ? (
-                            <>
-                                <div className="relative mb-6">
-                                    <div className="w-24 h-24 rounded-[2rem] bg-secondary flex items-center justify-center border-2 border-accent/40 shadow-2xl overflow-hidden group-hover/award:scale-105 transition-transform duration-500">
-                                        {topServer.avatar_url ? (
-                                            <img src={topServer.avatar_url} alt="" className="w-full h-full object-cover" />
-                                        ) : (
-                                            <span className="text-3xl font-black text-accent">
-                                                {(topServer.first_name?.[0] || 'S')}{(topServer.last_name?.[0] || '')}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <div className="absolute -bottom-2 -right-2 bg-accent text-accent-foreground w-8 h-8 rounded-full flex items-center justify-center shadow-lg border-2 border-background">
-                                        <Star className="w-4 h-4 fill-current" />
-                                    </div>
-                                </div>
-                                
-                                <h3 className="text-xl font-black tracking-tight mb-1">{topServer.first_name || 'Altar'} {topServer.last_name || 'Server'}</h3>
-                                <p className="text-accent font-bold text-[10px] uppercase tracking-widest mb-6 italic">
-                                    {topServer.group_name || 'Altar Server'}
-                                </p>
-
-                                <div className="grid grid-cols-2 gap-3 w-full max-w-[200px]">
-                                    <div className="p-3 bg-secondary/50 rounded-2xl border border-border group-hover/award:border-accent/20 transition-colors">
-                                        <div className="text-lg font-black text-accent">{topServerServiceCount}</div>
-                                        <div className="text-[9px] font-bold text-muted-foreground uppercase leading-tight">Service<br/>Count</div>
-                                    </div>
-                                    <div className="p-3 bg-secondary/50 rounded-2xl border border-border group-hover/award:border-accent/20 transition-colors">
-                                        <div className="text-lg font-black text-green-500">{topServerPresenceCount}</div>
-                                        <div className="text-[9px] font-bold text-muted-foreground uppercase leading-tight">Total<br/>Presence</div>
-                                    </div>
-                                </div>
-
-                                <div className="mt-4 px-4 py-2 bg-accent/5 rounded-full border border-accent/10">
-                                    <span className="text-[10px] font-bold text-accent uppercase tracking-widest">
-                                        Attendance Rate: {topServerRate}%
-                                    </span>
-                                </div>
-
-                                <Link href={`/servers/${topServer.id}`} className="mt-8">
-                                    <Button variant="accent" size="sm" className="rounded-full shadow-lg shadow-accent/20 h-10 px-8 font-bold">
-                                        Achievements
-                                    </Button>
-                                </Link>
-                            </>
-                        ) : (
-                            <div className="space-y-4 my-auto py-6 px-2">
-                                <div className="w-20 h-20 rounded-[2rem] bg-accent/10 border border-accent/30 flex items-center justify-center mx-auto text-accent">
-                                    <Trophy className="w-10 h-10 opacity-70" />
-                                </div>
-                                <div>
-                                    <h3 className="text-base font-bold text-foreground">Award Pending</h3>
-                                    <p className="text-xs text-muted-foreground mt-1 max-w-[200px] mx-auto">
-                                        Record mass attendance to select this month's top server.
-                                    </p>
-                                </div>
-                                <Link href="/attendance">
-                                    <Button variant="outline" size="sm" className="rounded-full border-accent/30 text-accent hover:bg-accent/10 text-xs font-bold mt-2">
-                                        Record Attendance
-                                    </Button>
-                                </Link>
+                        <div className="absolute inset-0 bg-gradient-to-br from-accent/10 via-transparent to-background/80 z-0"></div>
+                        
+                        <CardHeader className="relative z-10 pb-2 flex flex-row items-center justify-between">
+                            <div>
+                                <CardTitle className="text-sm font-bold uppercase tracking-widest text-accent flex items-center gap-2">
+                                    <Trophy className="w-4 h-4" />
+                                    Award
+                                </CardTitle>
+                                <CardDescription className="font-bold text-foreground/80 mt-1 uppercase text-[10px] tracking-tighter">
+                                    Server of the Month {isFallbackPeriod ? '(Recent)' : ''}
+                                </CardDescription>
                             </div>
-                        )}
-                    </CardContent>
-                </Card>
+                            <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center border border-accent/30">
+                                <Star className="w-5 h-5 text-accent fill-accent" />
+                            </div>
+                        </CardHeader>
+
+                        <CardContent className="relative z-10 pt-4 flex flex-col items-center text-center pb-8 flex-1 justify-center">
+                            {topServer ? (
+                                <>
+                                    <div className="relative mb-6">
+                                        <div className="w-24 h-24 rounded-[2rem] bg-secondary flex items-center justify-center border-2 border-accent/40 shadow-2xl overflow-hidden group-hover/award:scale-105 transition-transform duration-500">
+                                            {topServer.avatar_url ? (
+                                                <img src={topServer.avatar_url} alt="" className="w-full h-full object-cover" />
+                                            ) : (
+                                                <span className="text-3xl font-black text-accent">
+                                                    {(topServer.first_name?.[0] || 'S')}{(topServer.last_name?.[0] || '')}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="absolute -bottom-2 -right-2 bg-accent text-accent-foreground w-8 h-8 rounded-full flex items-center justify-center shadow-lg border-2 border-background">
+                                            <Star className="w-4 h-4 fill-current" />
+                                        </div>
+                                    </div>
+                                    
+                                    <h3 className="text-xl font-black tracking-tight mb-1">{topServer.first_name || 'Altar'} {topServer.last_name || 'Server'}</h3>
+                                    <p className="text-accent font-bold text-[10px] uppercase tracking-widest mb-6 italic">
+                                        {topServer.group_name || 'Altar Server'}
+                                    </p>
+
+                                    <div className="grid grid-cols-2 gap-3 w-full max-w-[200px]">
+                                        <div className="p-3 bg-secondary/50 rounded-2xl border border-border group-hover/award:border-accent/20 transition-colors">
+                                            <div className="text-lg font-black text-accent">{topServerServiceCount}</div>
+                                            <div className="text-[9px] font-bold text-muted-foreground uppercase leading-tight">Service<br/>Count</div>
+                                        </div>
+                                        <div className="p-3 bg-secondary/50 rounded-2xl border border-border group-hover/award:border-accent/20 transition-colors">
+                                            <div className="text-lg font-black text-green-500">{topServerPresenceCount}</div>
+                                            <div className="text-[9px] font-bold text-muted-foreground uppercase leading-tight">Total<br/>Presence</div>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-4 px-4 py-2 bg-accent/5 rounded-full border border-accent/10">
+                                        <span className="text-[10px] font-bold text-accent uppercase tracking-widest">
+                                            Attendance Rate: {topServerRate}%
+                                        </span>
+                                    </div>
+
+                                    <div className="mt-8">
+                                        <Button variant="accent" size="sm" className="rounded-full shadow-lg shadow-accent/20 h-10 px-8 font-bold pointer-events-none group-hover/cardLink:scale-105 transition-transform">
+                                            View Overall Stats
+                                        </Button>
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="space-y-4 my-auto py-6 px-2">
+                                    <div className="w-20 h-20 rounded-[2rem] bg-accent/10 border border-accent/30 flex items-center justify-center mx-auto text-accent">
+                                        <Trophy className="w-10 h-10 opacity-70" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-base font-bold text-foreground">Award Pending</h3>
+                                        <p className="text-xs text-muted-foreground mt-1 max-w-[200px] mx-auto">
+                                            Record mass attendance to select this month's top server.
+                                        </p>
+                                    </div>
+                                    <div className="mt-2">
+                                        <Button variant="outline" size="sm" className="rounded-full border-accent/30 text-accent hover:bg-accent/10 text-xs font-bold pointer-events-none">
+                                            View Overall Stats
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </Link>
 
                 {/* 2. Recent Activities (Columns 2-3) */}
                 <Card className="border border-border shadow-md bg-card flex flex-col h-full lg:col-span-2">
